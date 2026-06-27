@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="admin-layout">
+  <div class="admin-sidebar">
+    <div style="padding:16px 20px;font-weight:bold;font-size:16px;border-bottom:1px solid rgba(255,255,255,0.1)">后台管理</div>
+    <a href="#" class="active" onclick="return switchTab('products')">款式管理</a>
+    <a href="#" onclick="return switchTab('categories')">分类管理</a>
+    <a href="#" onclick="return switchTab('import')">批量导入</a>
+    <a href="#" onclick="return switchTab('upload')">文件上传</a>
+    <a href="#" onclick="logout()" style="margin-top:40px;color:#E74C3C">退出登录</a>
+  </div>
+  <div class="admin-main" id="adminMain">
+    <h2>款式管理</h2>
+    <button class="btn btn-primary" onclick="showForm()">+ 新增款式</button>
+    <div style="margin-top:16px;overflow-x:auto">
+      <table class="admin-table" id="productTable">
+        <thead><tr><th>ID</th><th>名称</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+        <tbody id="productBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Form Modal -->
+<div id="formModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto">
+  <div style="background:#fff;max-width:500px;margin:40px auto;padding:24px;border-radius:12px">
+    <h3 id="formTitle">新增款式</h3>
+    <div class="admin-form" id="productForm">
+      <label>款式名称 *</label><input id="f_name" />
+      <label>分类</label><select id="f_category"></select>
+      <label>材质</label><select id="f_material"></select>
+      <label>风格</label><select id="f_style"></select>
+      <label>适用空间</label><select id="f_space"></select>
+      <label>遮光等级</label><select id="f_light"></select>
+      <label>尺寸范围</label><input id="f_size" placeholder="如: 1.5-3米" />
+      <label>描述</label><textarea id="f_desc"></textarea>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="saveProduct()">保存</button>
+        <button class="btn btn-outline" onclick="hideForm()">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+let editingId = null;
+let allCategories = {};
+
+if (!API.token) { window.location.href = 'login.html'; }
+
+function logout() {
+  localStorage.removeItem('token');
+  window.location.href = 'login.html';
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.admin-sidebar a').forEach(a => a.classList.remove('active'));
+  event.target.classList.add('active');
+
+  const main = document.getElementById('adminMain');
+  if (name === 'products') renderProductsTab();
+  else if (name === 'categories') renderCategoriesTab();
+  else if (name === 'import') renderImportTab();
+  else if (name === 'upload') renderUploadTab();
+  return false;
+}
+
+async function loadCategorySelects() {
+  allCategories = await API.getCategories();
+  const selects = ['f_category', 'f_material', 'f_style', 'f_space', 'f_light'];
+  const dims = ['category', 'material', 'style', 'space', 'light'];
+  selects.forEach((s, i) => {
+    const el = document.getElementById(s);
+    const items = allCategories[dims[i]] || [];
+    el.innerHTML = '<option value="">不限</option>' + items.map(it => `<option value="${it.id}">${it.name}</option>`).join('');
+  });
+}
+
+// Products Tab
+async function renderProductsTab() {
+  document.getElementById('adminMain').innerHTML = `
+    <h2>款式管理</h2>
+    <button class="btn btn-primary" onclick="showForm()">+ 新增款式</button>
+    <div style="margin-top:16px;overflow-x:auto">
+      <table class="admin-table">
+        <thead><tr><th>ID</th><th>名称</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+        <tbody id="productBody"></tbody>
+      </table>
+    </div>`;
+
+  try {
+    const list = await API.getCurtains();
+    const body = document.getElementById('productBody');
+    body.innerHTML = list.map(c => `<tr>
+      <td>${c.id}</td>
+      <td>${c.name}</td>
+      <td><span style="color:${c.status === 'active' ? '#27AE60' : '#E74C3C'}">${c.status === 'active' ? '上架' : '下架'}</span></td>
+      <td>${c.created_at || ''}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="editProduct(${c.id})">编辑</button>
+        <button class="btn btn-sm ${c.status === 'active' ? 'btn-danger' : 'btn-primary'}" onclick="toggleStatus(${c.id}, '${c.status === 'active' ? 'inactive' : 'active'}')">${c.status === 'active' ? '下架' : '上架'}</button>
+        <button class="btn btn-sm btn-outline" onclick="deleteProduct(${c.id})">删除</button>
+      </td>
+    </tr>`).join('');
+  } catch(e) {
+    document.getElementById('adminMain').innerHTML += '<div style="color:red;margin-top:12px">加载失败</div>';
+  }
+}
+
+function showForm(data) {
+  editingId = data?.id || null;
+  document.getElementById('formTitle').textContent = editingId ? '编辑款式' : '新增款式';
+  document.getElementById('f_name').value = data?.name || '';
+  document.getElementById('f_category').value = data?.category_id || '';
+  document.getElementById('f_material').value = data?.material_id || '';
+  document.getElementById('f_style').value = data?.style_id || '';
+  document.getElementById('f_space').value = data?.space_id || '';
+  document.getElementById('f_light').value = data?.light_level_id || '';
+  document.getElementById('f_size').value = data?.size_range || '';
+  document.getElementById('f_desc').value = data?.description || '';
+  document.getElementById('formModal').style.display = 'block';
+  loadCategorySelects();
+}
+
+function hideForm() {
+  document.getElementById('formModal').style.display = 'none';
+  editingId = null;
+}
+
+async function saveProduct() {
+  const data = {
+    name: document.getElementById('f_name').value.trim(),
+    category_id: document.getElementById('f_category').value || null,
+    material_id: document.getElementById('f_material').value || null,
+    style_id: document.getElementById('f_style').value || null,
+    space_id: document.getElementById('f_space').value || null,
+    light_level_id: document.getElementById('f_light').value || null,
+    size_range: document.getElementById('f_size').value.trim() || null,
+    description: document.getElementById('f_desc').value.trim() || null
+  };
+  if (!data.name) { toast('请输入款式名称'); return; }
+
+  try {
+    await API.saveCurtain(data, editingId);
+    hideForm();
+    renderProductsTab();
+    toast(editingId ? '已更新' : '已创建');
+  } catch(e) { toast(e.message); }
+}
+
+async function editProduct(id) {
+  try {
+    const c = await API.getCurtain(id);
+    showForm(c);
+  } catch(e) { toast('加载失败'); }
+}
+
+async function toggleStatus(id, status) {
+  await API.setStatus(id, status);
+  renderProductsTab();
+}
+
+async function deleteProduct(id) {
+  if (!confirm('确定删除？')) return;
+  await API.deleteCurtain(id);
+  renderProductsTab();
+}
+
+// Categories Tab
+async function renderCategoriesTab() {
+  const dims = { category: '分类', material: '材质', style: '风格', space: '空间', light: '遮光等级' };
+  let html = '<h2>分类管理</h2>';
+  for (const [key, label] of Object.entries(dims)) {
+    html += `<div class="admin-card"><h3 style="margin-bottom:12px">${label}</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input id="new_${key}" placeholder="输入名称" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px" />
+        <button class="btn btn-primary btn-sm" onclick="addCategory('${key}')">添加</button>
+      </div>
+      <div id="list_${key}"></div>
+    </div>`;
+  }
+  document.getElementById('adminMain').innerHTML = html;
+  loadCategoryList();
+}
+
+async function loadCategoryList() {
+  try {
+    const data = await API.getCategories();
+    for (const [key, items] of Object.entries(data)) {
+      const div = document.getElementById('list_' + key);
+      if (!div) continue;
+      div.innerHTML = items.map(it =>
+        `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+          <span style="flex:1">${it.name}</span>
+          <button class="btn btn-sm btn-outline" onclick="editCategory(${it.id}, '${key}')">编辑</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCategory(${it.id})">删除</button>
+        </div>`
+      ).join('');
+    }
+  } catch(e) {}
+}
+
+async function addCategory(dim) {
+  const name = document.getElementById('new_' + dim).value.trim();
+  if (!name) return;
+  await API.saveCategory({ dimension: dim, name });
+  document.getElementById('new_' + dim).value = '';
+  loadCategoryList();
+}
+
+async function editCategory(id, dim) {
+  const name = prompt('修改名称：');
+  if (!name) return;
+  await API.saveCategory({ name }, id);
+  loadCategoryList();
+}
+
+async function deleteCategory(id) {
+  if (!confirm('确定删除？')) return;
+  await API.deleteCategory(id);
+  loadCategoryList();
+}
+
+// Import Tab
+function renderImportTab() {
+  document.getElementById('adminMain').innerHTML = `
+    <h2>批量导入款式</h2>
+    <div class="admin-card">
+      <p style="margin-bottom:12px;color:#666">准备一个CSV文件，格式如下：</p>
+      <pre style="background:#f5f5f5;padding:12px;border-radius:8px;font-size:12px;overflow-x:auto">
+name,category_id,material_id,style_id,light_level_id,space_id,size_range,description
+雅典白纱帘,1,1,1,1,1,1.5-3米,简约风格白色纱帘
+      </pre>
+      <p style="margin:12px 0;color:#666">分类ID可以在"分类管理"中查看</p>
+      <input type="file" id="csvFile" accept=".csv" style="margin-bottom:12px" />
+      <button class="btn btn-primary" onclick="importCSV()">开始导入</button>
+      <div id="importResult" style="margin-top:12px"></div>
+    </div>`;
+}
+
+async function importCSV() {
+  const file = document.getElementById('csvFile').files[0];
+  if (!file) { toast('请选择CSV文件'); return; }
+  const text = await file.text();
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) { toast('数据为空'); return; }
+
+  const headers = lines[0].split(',');
+  const items = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',');
+    const item = {};
+    headers.forEach((h, idx) => { item[h.trim()] = (vals[idx] || '').trim(); });
+    if (item.name) items.push(item);
+  }
+
+  try {
+    const res = await API.importBatch(items);
+    document.getElementById('importResult').innerHTML = `<span style="color:#27AE60">成功导入 ${res.count} 条数据</span>`;
+  } catch(e) {
+    document.getElementById('importResult').innerHTML = `<span style="color:#E74C3C">导入失败: ${e.message}</span>`;
+  }
+}
+
+// Upload Tab
+function renderUploadTab() {
+  document.getElementById('adminMain').innerHTML = `
+    <h2>文件上传</h2>
+    <div class="admin-card">
+      <p style="margin-bottom:12px">支持 JPG、PNG（图片）和 MP4、WebM（视频），单文件最大 100MB</p>
+      <input type="file" id="uploadFile" accept="image/*,video/*" />
+      <button class="btn btn-primary" onclick="doUpload()" style="margin-top:12px">上传</button>
+      <div id="uploadResult" style="margin-top:12px"></div>
+    </div>`;
+}
+
+async function doUpload() {
+  const file = document.getElementById('uploadFile').files[0];
+  if (!file) { toast('请选择文件'); return; }
+  try {
+    const res = await API.uploadFile(file);
+    document.getElementById('uploadResult').innerHTML = `
+      <p style="color:#27AE60">上传成功</p>
+      ${res.type === 'image' ? `<img src="${res.url}" style="max-width:200px;margin-top:8px;border-radius:8px" />` : ''}
+      <p style="font-size:12px;margin-top:4px;word-break:break-all">${res.url}</p>
+    `;
+    toast('上传成功');
+  } catch(e) { toast(e.message); }
+}
+
+function toast(msg) {
+  let el = document.querySelector('.toast');
+  if (!el) {
+    el = document.createElement('div'); el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// Init
+renderProductsTab();
+</script>
+</body>
+</html>

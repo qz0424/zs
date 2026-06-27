@@ -1,0 +1,18 @@
+require('dotenv').config();
+const app = require('./app');
+const db = require('./db');
+
+const PORT = process.env.PORT || 3000;
+
+// 初始化默认管理员
+const bcrypt = require('bcryptjs');
+const existing = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+if (!existing) {
+  const hash = bcrypt.hashSync('admin123', 10);
+  db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', hash, 'admin');
+  console.log('默认管理员已创建: admin / admin123');
+}
+
+app.listen(PORT, () => {
+  console.log(`服务已启动: http://localhost:${PORT}`);
+});

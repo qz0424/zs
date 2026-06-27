@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员登录</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-box">
+    <h2>管理员登录</h2>
+    <input type="text" id="username" placeholder="用户名" autocomplete="username" />
+    <input type="password" id="password" placeholder="密码" autocomplete="current-password" />
+    <button onclick="login()">登录</button>
+    <div class="error" id="error"></div>
+  </div>
+</div>
+<script src="/js/api.js"></script>
+<script>
+if (API.token) { window.location.href = 'dashboard.html'; }
+
+async function login() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  if (!username || !password) { document.getElementById('error').textContent = '请输入用户名和密码'; return; }
+  try {
+    const res = await API.login(username, password);
+    localStorage.setItem('token', res.token);
+    window.location.href = 'dashboard.html';
+  } catch(e) {
+    document.getElementById('error').textContent = e.message;
+  }
+}
+
+document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

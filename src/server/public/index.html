@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>产品展示</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2C3E50">
+</head>
+<body>
+
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <span class="back" id="backBtn" style="display:none">←</span>
+    <h1 id="pageTitle">产品展示</h1>
+  </div>
+
+  <!-- Search -->
+  <div class="search-bar" id="searchBar">
+    <input type="text" id="searchInput" placeholder="搜索款式名称..." />
+    <button onclick="searchCurtains()">搜索</button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters" id="filterBar"></div>
+
+  <!-- Page: Home -->
+  <div class="page" id="page-home">
+    <div class="product-grid" id="productGrid"></div>
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div class="icon">📷</div>
+      <p>暂无产品</p>
+    </div>
+  </div>
+
+  <!-- Page: Detail -->
+  <div class="page hidden" id="page-detail">
+    <div class="detail">
+      <div class="media-section">
+        <div id="mainMedia"></div>
+        <div class="media-nav" id="mediaNav"></div>
+      </div>
+      <div class="body">
+        <h2 id="detailName"></h2>
+        <div class="tags" id="detailTags"></div>
+        <div class="colors-list" id="detailColors"></div>
+        <div class="fav-large" id="detailFav">♡ 收藏</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Favorites -->
+  <div class="page hidden" id="page-favorites">
+    <div class="product-grid" id="favGrid"></div>
+    <div class="empty-state" id="favEmpty" style="display:none">
+      <div class="icon">♡</div>
+      <p>还没有收藏的款式</p>
+    </div>
+  </div>
+
+  <!-- Page: Compare -->
+  <div class="page hidden" id="page-compare">
+    <div class="compare-grid" id="compareGrid"></div>
+    <div class="empty-state" id="compareEmpty" style="display:none">
+      <div class="icon">⚖️</div>
+      <p>还没有添加对比</p>
+    </div>
+  </div>
+
+  <!-- Compare Bar -->
+  <div class="compare-bar" id="compareBar" style="display:none">
+    <span id="compareCount">0 款</span>
+    <button class="btn btn-sm btn-primary" onclick="showPage('compare')">对比</button>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <a href="#" class="active" onclick="return showPage('home')">
+      <span class="icon">🏠</span>首页
+    </a>
+    <a href="#" onclick="return showPage('favorites')">
+      <span class="icon">♡</span>收藏
+    </a>
+    <a href="#" onclick="return showPage('compare')">
+      <span class="icon">⚖️</span>对比
+    </a>
+  </nav>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+let allCurtains = [];
+let categories = {};
+let compareIds = JSON.parse(localStorage.getItem('compareIds') || '[]');
+let favIds = new Set();
+
+async function loadCategories() {
+  try {
+    categories = await API.getCategories();
+    renderFilters();
+  } catch(e) {}
+}
+
+function renderFilters() {
+  const bar = document.getElementById('filterBar');
+  const dims = { category: '分类', material: '材质', style: '风格', space: '空间' };
+  let html = '<span class="filter-btn active" data-dim="all" data-val="" onclick="filterBy(this)">全部</span>';
+  Object.keys(dims).forEach(dim => {
+    const items = categories[dim] || [];
+    items.forEach(item => {
+      html += `<span class="filter-btn" data-dim="${dim}" data-val="${item.id}" onclick="filterBy(this)">${item.name}</span>`;
+    });
+  });
+  bar.innerHTML = html;
+}
+
+let activeFilters = {};
+
+function filterBy(el) {
+  const dim = el.dataset.dim;
+  const val = el.dataset.val;
+
+  if (dim === 'all') {
+    activeFilters = {};
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.filter-btn[data-dim="all"]').classList.add('active');
+  } else {
+    document.querySelector('.filter-btn[data-dim="all"]').classList.remove('active');
+    if (activeFilters[dim] === val) {
+      delete activeFilters[dim];
+      el.classList.remove('active');
+    } else {
+      document.querySelectorAll(`.filter-btn[data-dim="${dim}"]`).forEach(b => b.classList.remove('active'));
+      activeFilters[dim] = val;
+      el.classList.add('active');
+    }
+  }
+  loadCurtains();
+}
+
+function searchCurtains() {
+  loadCurtains();
+}
+
+async function loadCurtains() {
+  const params = {};
+  const q = document.getElementById('searchInput').value.trim();
+  if (q) params.search = q;
+  Object.keys(activeFilters).forEach(dim => { params[dim] = activeFilters[dim]; });
+
+  try {
+    allCurtains = await API.getCurtains(params);
+    renderGrid(document.getElementById('productGrid'), document.getElementById('emptyState'), allCurtains);
+  } catch(e) {
+    document.getElementById('productGrid').innerHTML = '<div class="empty-state">加载失败</div>';
+  }
+}
+
+function renderGrid(grid, empty, items) {
+  if (!items || items.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = items.map(c => {
+    const isFav = favIds.has(c.id);
+    const hasCompare = compareIds.includes(c.id);
+    return `<div class="product-card" onclick="openDetail(${c.id})" style="position:relative">
+      <button class="fav-btn" onclick="event.stopPropagation(); toggleFav(${c.id}, ${!isFav})">${isFav ? '❤️' : '♡'}</button>
+      <img src="${c.cover || '/assets/placeholder.jpg'}" alt="${c.name}" onerror="this.src='/assets/placeholder.jpg'" />
+      <div class="info">
+        <div class="name">${c.name}</div>
+        <div class="meta">${c.size_range || ''}</div>
+        <div class="colors">${(c.colors || []).map(col => `<span class="color-dot" style="background:${col.color_code || '#ddd'}"></span>`).join('')}</div>
+        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); toggleCompare(${c.id})" style="margin-top:6px;width:100%">
+          ${hasCompare ? '取消对比' : '加入对比'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openDetail(id) {
+  try {
+    const c = await API.getCurtain(id);
+    document.getElementById('pageTitle').textContent = c.name;
+    document.getElementById('backBtn').style.display = 'inline';
+
+    const medias = c.media || [];
+    const mainMedia = document.getElementById('mainMedia');
+    if (medias.length > 0) {
+      const first = medias[0];
+      if (first.type === 'video') {
+        mainMedia.innerHTML = `<video src="${first.url}" controls style="width:100%;max-height:400px"></video>`;
+      } else {
+        mainMedia.innerHTML = `<img src="${first.url}" onerror="this.src='/assets/placeholder.jpg'" />`;
+      }
+    } else {
+      mainMedia.innerHTML = `<img src="/assets/placeholder.svg" />`;
+    }
+
+    const nav = document.getElementById('mediaNav');
+    nav.innerHTML = medias.map((m, i) => {
+      if (m.type === 'video') {
+        return `<video src="${m.url}" onclick="switchMedia(this, ${i})" class="${i === 0 ? 'active' : ''}"></video>`;
+      }
+      return `<img src="${m.url}" onclick="switchMedia(this, ${i})" class="${i === 0 ? 'active' : ''}" onerror="this.src='/assets/placeholder.jpg'" />`;
+    }).join('');
+
+    document.getElementById('detailName').textContent = c.name;
+    const tags = [];
+    if (c.category) tags.push(c.category.name);
+    if (c.material) tags.push(c.material.name);
+    if (c.style) tags.push(c.style.name);
+    if (c.light_level) tags.push(c.light_level.name);
+    if (c.space) tags.push(c.space.name);
+    if (c.size_range) tags.push(c.size_range);
+    document.getElementById('detailTags').innerHTML = tags.map(t => `<span>${t}</span>`).join('');
+
+    const colors = c.colors || [];
+    document.getElementById('detailColors').innerHTML = colors.map(col =>
+      `<div class="color-item"><div class="color-dot" style="background:${col.color_code || '#ddd'}"></div><span>${col.color_name}</span></div>`
+    ).join('');
+
+    const isFav = favIds.has(c.id);
+    document.getElementById('detailFav').textContent = isFav ? '❤️ 已收藏' : '♡ 收藏';
+    document.getElementById('detailFav').onclick = () => toggleFav(c.id, !isFav);
+
+    currentDetailId = c.id;
+    showPage('detail');
+  } catch(e) { toast('加载失败'); }
+}
+
+let currentDetailId = null;
+
+function switchMedia(el, idx) {
+  document.querySelectorAll('#mediaNav img, #mediaNav video').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  const medias = allCurtains.find(c => c.id === currentDetailId)?.media || [];
+  // We need to get full detail media again - but for simplicity just update the main display
+  const src = el.src || el.querySelector('source')?.src;
+  if (el.tagName === 'VIDEO') {
+    document.getElementById('mainMedia').innerHTML = `<video src="${src}" controls style="width:100%;max-height:400px"></video>`;
+  } else {
+    document.getElementById('mainMedia').innerHTML = `<img src="${src}" />`;
+  }
+}
+
+async function loadFavorites() {
+  try {
+    const favs = await API.getFavorites();
+    favIds = new Set(favs.map(f => f.id));
+    renderGrid(document.getElementById('favGrid'), document.getElementById('favEmpty'), favs);
+  } catch(e) {}
+}
+
+async function toggleFav(id, add) {
+  try {
+    await API.toggleFavorite(id, add);
+    if (add) favIds.add(id); else favIds.delete(id);
+    toast(add ? '已收藏' : '已取消收藏');
+    if (document.getElementById('page-favorites').classList.contains('hidden') === false) loadFavorites();
+    if (document.getElementById('page-detail').classList.contains('hidden') === false) {
+      document.getElementById('detailFav').textContent = add ? '❤️ 已收藏' : '♡ 收藏';
+    }
+    loadCurtains();
+  } catch(e) { toast('操作失败'); }
+}
+
+function toggleCompare(id) {
+  const idx = compareIds.indexOf(id);
+  if (idx > -1) {
+    compareIds.splice(idx, 1);
+  } else {
+    if (compareIds.length >= 4) { toast('最多对比4款'); return; }
+    compareIds.push(id);
+  }
+  localStorage.setItem('compareIds', JSON.stringify(compareIds));
+  updateCompareBar();
+  loadCurtains();
+  if (!document.getElementById('page-compare').classList.contains('hidden')) loadComparePage();
+}
+
+function updateCompareBar() {
+  const bar = document.getElementById('compareBar');
+  if (compareIds.length > 0) {
+    bar.style.display = 'flex';
+    document.getElementById('compareCount').textContent = compareIds.length + ' 款';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+async function loadComparePage() {
+  if (compareIds.length === 0) {
+    document.getElementById('compareGrid').innerHTML = '';
+    document.getElementById('compareEmpty').style.display = 'block';
+    return;
+  }
+  document.getElementById('compareEmpty').style.display = 'none';
+
+  const items = [];
+  for (const id of compareIds) {
+    try {
+      const c = await API.getCurtain(id);
+      items.push(c);
+    } catch(e) {}
+  }
+
+  document.getElementById('compareGrid').innerHTML = items.map(c => {
+    const cover = (c.media || []).find(m => m.type === 'image');
+    return `<div class="compare-item">
+      <button class="remove" onclick="toggleCompare(${c.id})">×</button>
+      <img src="${cover?.url || '/assets/placeholder.jpg'}" onerror="this.src='/assets/placeholder.jpg'" />
+      <div class="info" style="padding:8px">
+        <div style="font-weight:600;font-size:13px">${c.name}</div>
+        <div style="font-size:12px;color:#999;margin-top:4px">${c.size_range || ''}</div>
+        ${c.category ? `<div style="font-size:12px;color:#666">分类：${c.category.name}</div>` : ''}
+        ${c.material ? `<div style="font-size:12px;color:#666">材质：${c.material.name}</div>` : ''}
+        ${c.style ? `<div style="font-size:12px;color:#666">风格：${c.style.name}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById('page-' + name).classList.remove('hidden');
+  document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('pageTitle').textContent = name === 'home' ? '产品展示' : name === 'favorites' ? '收藏' : '对比';
+  document.getElementById('backBtn').style.display = name === 'detail' ? 'inline' : 'none';
+  document.getElementById('searchBar').style.display = name === 'home' ? 'flex' : 'none';
+  document.getElementById('filterBar').style.display = name === 'home' ? 'flex' : 'none';
+
+  if (name === 'home') loadCurtains();
+  if (name === 'favorites') loadFavorites();
+  if (name === 'compare') loadComparePage();
+  return false;
+}
+
+document.getElementById('backBtn').onclick = () => {
+  if (!document.getElementById('page-detail').classList.contains('hidden')) showPage('home');
+};
+
+function toast(msg) {
+  let el = document.querySelector('.toast');
+  if (!el) {
+    el = document.createElement('div'); el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// Init
+loadCategories();
+loadCurtains();
+loadFavorites();
+updateCompareBar();
+</script>
+</body>
+</html>
