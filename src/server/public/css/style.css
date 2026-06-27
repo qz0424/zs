@@ -42,7 +42,13 @@ input, textarea { font-family: inherit; }
 .filters { display: flex; gap: 6px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .filters select { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); background: var(--bg); outline: none; cursor: pointer; appearance: auto; transition: border-color var(--transition); }
 .filters select:focus { border-color: var(--accent); }
-.filters select option { font-size: 13px; }
+.history-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.history-header { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; font-weight: 500; }
+.history-grid { display: flex; gap: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.history-grid::-webkit-scrollbar { display: none; }
+.history-item { flex-shrink: 0; width: 100px; cursor: pointer; }
+.history-item img { width: 100px; height: 75px; object-fit: cover; border-radius: 8px; background: var(--border); }
+.history-item .name { font-size: 11px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
 
 .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px; max-width: 1200px; margin: 0 auto; }
 @media (min-width: 640px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }

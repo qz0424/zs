@@ -35,6 +35,13 @@
 
   <!-- Page: Home -->
   <div class="page" id="page-home">
+    <div class="history-section" id="historySection" style="display:none">
+      <div class="history-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        最近浏览
+      </div>
+      <div class="history-grid" id="historyGrid"></div>
+    </div>
     <div class="product-grid" id="productGrid"></div>
     <div class="empty-state" id="emptyState" style="display:none">
       <div class="icon">
@@ -114,6 +121,33 @@ let favIds = new Set();
 let currentDetail = null;
 let selectedColorId = null;
 
+function getHistory() { return JSON.parse(localStorage.getItem('browseHistory') || '[]'); }
+
+function recordHistory(id) {
+  let h = getHistory();
+  h = h.filter(i => i !== id);
+  h.unshift(id);
+  if (h.length > 50) h = h.slice(0, 50);
+  localStorage.setItem('browseHistory', JSON.stringify(h));
+}
+
+function renderHistory() {
+  const ids = getHistory();
+  const container = document.getElementById('historySection');
+  if (ids.length === 0) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  const grid = document.getElementById('historyGrid');
+  const items = ids.map(id => allCurtains.find(c => c.id === id)).filter(Boolean).slice(0, 10);
+  if (items.length === 0) { container.style.display = 'none'; return; }
+  grid.innerHTML = items.map(c => {
+    const col = (c.colors || [])[0];
+    return `<div class="history-item" onclick="openDetail(${c.id})">
+      <img src="${col?.media_url || c.cover || '/assets/placeholder.svg'}" onerror="this.src='/assets/placeholder.svg'" />
+      <div class="name">${c.name}</div>
+    </div>`;
+  }).join('');
+}
+
 async function loadCategories() {
   try {
     categories = await API.getCategories();
@@ -158,6 +192,7 @@ async function loadCurtains() {
   try {
     allCurtains = await API.getCurtains(params);
     renderGrid(document.getElementById('productGrid'), document.getElementById('emptyState'), allCurtains);
+    renderHistory();
   } catch(e) {
     document.getElementById('productGrid').innerHTML = '<div class="empty-state">加载失败</div>';
   }
@@ -240,6 +275,7 @@ function showMainMedia(el) {
 
 async function openDetail(id) {
   try {
+    recordHistory(id);
     currentDetail = await API.getCurtain(id);
     const c = currentDetail;
     selectedColorId = null;
