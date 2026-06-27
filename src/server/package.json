@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "admin": "node src/admin-server.js",
+    "both": "node src/server.js & node src/admin-server.js"
   },
   "keywords": [],
   "author": "",

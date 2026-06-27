@@ -44,7 +44,11 @@ router.get('/', (req, res) => {
 
   const result = list.map(c => {
     const cover = db.prepare("SELECT url FROM curtain_media WHERE curtain_id = ? AND type = 'image' ORDER BY sort_order LIMIT 1").get(c.id);
-    const colors = db.prepare('SELECT color_name, color_code FROM curtain_colors WHERE curtain_id = ? ORDER BY sort_order').all(c.id);
+    const colorRows = db.prepare('SELECT id, color_name, color_code FROM curtain_colors WHERE curtain_id = ? ORDER BY sort_order').all(c.id);
+    const colors = colorRows.map(cl => {
+      const media = db.prepare("SELECT url FROM curtain_media WHERE color_id = ? AND type = 'image' LIMIT 1").get(cl.id);
+      return { color_name: cl.color_name, color_code: cl.color_code, media_url: media?.url || null };
+    });
     return { ...c, cover: cover?.url || null, colors };
   });
 

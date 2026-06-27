@@ -12,15 +12,17 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
+app.use('/js', express.static(path.join(__dirname, '..', 'public', 'js')));
+app.use('/assets', express.static(path.join(__dirname, '..', 'public', 'assets')));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/admin', express.static(path.join(__dirname, '..', 'public', 'admin')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/curtains', curtainRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/admin', uploadRoutes);
-app.get('/admin', (req, res) => res.redirect('/admin/login.html'));
-app.get('/client', (req, res) => res.redirect('/client/'));
+app.get('/', (req, res) => res.redirect('/admin/login.html'));
 
 module.exports = app;
