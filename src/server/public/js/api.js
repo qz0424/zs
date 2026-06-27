@@ -1,6 +1,21 @@
 const API = {
   base: '',
-  token: localStorage.getItem('token'),
+
+  get token() {
+    const t = localStorage.getItem('token');
+    if (!t) return null;
+    try {
+      const payload = JSON.parse(atob(t.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        localStorage.removeItem('token');
+        return null;
+      }
+    } catch(e) {
+      localStorage.removeItem('token');
+      return null;
+    }
+    return t;
+  },
 
   async request(method, path, body) {
     const opts = { method, headers: {} };

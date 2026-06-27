@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 
 const authRoutes = require('./routes/auth');
 const curtainRoutes = require('./routes/curtains');
@@ -17,7 +18,18 @@ app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
 app.use('/js', express.static(path.join(__dirname, '..', 'public', 'js')));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public', 'assets')));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-app.use('/admin', express.static(path.join(__dirname, '..', 'public', 'admin')));
+
+const adminPages = express.static(path.join(__dirname, '..', 'public', 'admin'));
+app.use('/admin', (req, res, next) => {
+  if (req.path === '/login.html' || req.path === '/register.html') return adminPages(req, res, next);
+  const token = req.query.token || '';
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    return adminPages(req, res, next);
+  } catch {
+    return res.redirect('/admin/login.html');
+  }
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/curtains', curtainRoutes);

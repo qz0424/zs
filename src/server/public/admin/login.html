@@ -16,14 +16,12 @@
     <div class="error" id="error"></div>
     <div style="text-align:center;margin-top:16px;font-size:13px">
       <a href="register.html" style="color:var(--accent);text-decoration:none">注册新账号</a>
-      &nbsp;·&nbsp;
-      <a href="http://localhost:3000/client/" style="color:var(--text-secondary);text-decoration:none">← 返回客户版</a>
     </div>
   </div>
 </div>
 <script src="/js/api.js"></script>
 <script>
-if (API.token) { window.location.href = 'dashboard.html'; }
+if (API.token) { window.location.href = 'dashboard.html?token=' + API.token; }
 
 async function login() {
   const username = document.getElementById('username').value.trim();
@@ -32,7 +30,7 @@ async function login() {
   try {
     const res = await API.login(username, password);
     localStorage.setItem('token', res.token);
-    window.location.href = 'dashboard.html';
+    window.location.href = 'dashboard.html?token=' + res.token;
   } catch(e) {
     document.getElementById('error').textContent = e.message;
   }

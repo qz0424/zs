@@ -143,6 +143,17 @@ let formColors = [];
 
 if (!API.token) { window.location.href = 'login.html'; }
 
+function getAdminToken() {
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get('token');
+  if (urlToken && urlToken !== localStorage.getItem('token')) {
+    localStorage.setItem('token', urlToken);
+  }
+  return localStorage.getItem('token');
+}
+const adminToken = getAdminToken();
+if (!adminToken) { window.location.href = 'login.html'; }
+
 function logout() { localStorage.removeItem('token'); window.location.href = 'login.html'; }
 
 function switchTab(name) {
