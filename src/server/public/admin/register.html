@@ -3,42 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>管理员登录</title>
+<title>管理员注册</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <div class="auth-page">
   <div class="auth-box">
-    <h2>管理员登录</h2>
+    <h2>管理员注册</h2>
     <input type="text" id="username" placeholder="用户名" autocomplete="username" />
-    <input type="password" id="password" placeholder="密码" autocomplete="current-password" />
-    <button onclick="login()">登录</button>
+    <input type="password" id="password" placeholder="密码（至少6位）" autocomplete="new-password" />
+    <input type="password" id="confirm" placeholder="确认密码" autocomplete="new-password" />
+    <button onclick="register()">注册</button>
     <div class="error" id="error"></div>
     <div style="text-align:center;margin-top:16px;font-size:13px">
-      <a href="register.html" style="color:var(--accent);text-decoration:none">注册新账号</a>
-      &nbsp;·&nbsp;
-      <a href="http://localhost:3000/client/" style="color:var(--text-secondary);text-decoration:none">← 返回客户版</a>
+      <a href="/admin/login.html" style="color:var(--text-secondary);text-decoration:none">已有账号？去登录</a>
     </div>
   </div>
 </div>
 <script src="/js/api.js"></script>
 <script>
-if (API.token) { window.location.href = 'dashboard.html'; }
-
-async function login() {
+async function register() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
+  const confirm = document.getElementById('confirm').value;
   if (!username || !password) { document.getElementById('error').textContent = '请输入用户名和密码'; return; }
+  if (password !== confirm) { document.getElementById('error').textContent = '两次密码不一致'; return; }
   try {
-    const res = await API.login(username, password);
-    localStorage.setItem('token', res.token);
-    window.location.href = 'dashboard.html';
+    const res = await API.register(username, password);
+    alert('注册成功，请登录');
+    window.location.href = 'login.html';
   } catch(e) {
     document.getElementById('error').textContent = e.message;
   }
 }
 
-document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+document.getElementById('confirm').addEventListener('keydown', e => { if (e.key === 'Enter') register(); });
 </script>
 </body>
 </html>

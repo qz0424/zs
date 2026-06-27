@@ -28,6 +28,10 @@ const API = {
     return this.post('/api/auth/login', { username, password });
   },
 
+  register(username, password) {
+    return this.post('/api/auth/register', { username, password });
+  },
+
   getCurtains(params) {
     const q = new URLSearchParams(params || {}).toString();
     return this.get('/api/curtains' + (q ? '?' + q : ''));

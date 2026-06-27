@@ -5,6 +5,20 @@ const db = require('../db');
 
 const router = Router();
 
+router.post('/register', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: '请输入用户名和密码' });
+  if (username.length < 2) return res.status(400).json({ error: '用户名至少2个字符' });
+  if (password.length < 6) return res.status(400).json({ error: '密码至少6个字符' });
+
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  if (existing) return res.status(409).json({ error: '用户名已存在' });
+
+  const hash = bcrypt.hashSync(password, 10);
+  db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run(username, hash, 'admin');
+  res.json({ message: '注册成功' });
+});
+
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '请输入用户名和密码' });
