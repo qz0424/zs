@@ -39,11 +39,10 @@ input, textarea { font-family: inherit; }
 .search-bar button { padding: 10px 20px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; transition: opacity var(--transition); }
 .search-bar button:hover { opacity: .9; }
 
-.filters { display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto; background: var(--surface); border-bottom: 1px solid var(--border); -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-.filters::-webkit-scrollbar { display: none; }
-.filter-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: all var(--transition); white-space: nowrap; }
-.filter-btn:hover { border-color: var(--accent); color: var(--accent); }
-.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filters { display: flex; gap: 6px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.filters select { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); background: var(--bg); outline: none; cursor: pointer; appearance: auto; transition: border-color var(--transition); }
+.filters select:focus { border-color: var(--accent); }
+.filters select option { font-size: 13px; }
 
 .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px; max-width: 1200px; margin: 0 auto; }
 @media (min-width: 640px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }

@@ -25,7 +25,13 @@
   </div>
 
   <!-- Filters -->
-  <div class="filters" id="filterBar"></div>
+  <div class="filters" id="filterBar">
+    <select id="filterAll" onchange="filterByDim('all', this.value)"><option value="">全部</option></select>
+    <select id="filterCategory" onchange="filterByDim('category', this.value)"><option value="">分类</option></select>
+    <select id="filterMaterial" onchange="filterByDim('material', this.value)"><option value="">材质</option></select>
+    <select id="filterStyle" onchange="filterByDim('style', this.value)"><option value="">风格</option></select>
+    <select id="filterSpace" onchange="filterByDim('space', this.value)"><option value="">空间</option></select>
+  </div>
 
   <!-- Page: Home -->
   <div class="page" id="page-home">
@@ -116,38 +122,25 @@ async function loadCategories() {
 }
 
 function renderFilters() {
-  const bar = document.getElementById('filterBar');
-  const dims = { category: '分类', material: '材质', style: '风格', space: '空间' };
-  let html = '<span class="filter-btn active" data-dim="all" data-val="" onclick="filterBy(this)">全部</span>';
-  Object.keys(dims).forEach(dim => {
+  const map = { category: 'filterCategory', material: 'filterMaterial', style: 'filterStyle', space: 'filterSpace' };
+  Object.keys(map).forEach(dim => {
+    const sel = document.getElementById(map[dim]);
     const items = categories[dim] || [];
-    items.forEach(item => {
-      html += `<span class="filter-btn" data-dim="${dim}" data-val="${item.id}" onclick="filterBy(this)">${item.name}</span>`;
-    });
+    sel.innerHTML = '<option value="">' + ({ category: '分类', material: '材质', style: '风格', space: '空间' }[dim]) + '</option>'
+      + items.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
   });
-  bar.innerHTML = html;
 }
 
 let activeFilters = {};
 
-function filterBy(el) {
-  const dim = el.dataset.dim;
-  const val = el.dataset.val;
-
+function filterByDim(dim, val) {
   if (dim === 'all') {
     activeFilters = {};
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.filter-btn[data-dim="all"]').classList.add('active');
+    ['filterCategory', 'filterMaterial', 'filterStyle', 'filterSpace'].forEach(id => document.getElementById(id).value = '');
   } else {
-    document.querySelector('.filter-btn[data-dim="all"]').classList.remove('active');
-    if (activeFilters[dim] === val) {
-      delete activeFilters[dim];
-      el.classList.remove('active');
-    } else {
-      document.querySelectorAll(`.filter-btn[data-dim="${dim}"]`).forEach(b => b.classList.remove('active'));
-      activeFilters[dim] = val;
-      el.classList.add('active');
-    }
+    document.getElementById('filterAll').value = '';
+    if (val) activeFilters[dim] = val;
+    else delete activeFilters[dim];
   }
   loadCurtains();
 }
