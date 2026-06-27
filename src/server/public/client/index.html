@@ -94,6 +94,46 @@
     </div>
   </div>
 
+  <!-- Page: Order -->
+  <div class="page hidden" id="page-order">
+    <div class="order-form">
+      <h3 class="section-title">📍 地址信息</h3>
+      <div class="form-group">
+        <label>小区名称 *</label>
+        <select id="orderCommunity"><option value="">请选择小区</option></select>
+        <div class="form-input-row" style="margin-top:6px">
+          <input id="orderBuilding" placeholder="号楼" />
+          <input id="orderUnit" placeholder="单元" />
+        </div>
+        <div class="form-input-row">
+          <input id="orderRoom" placeholder="房间号 (如 1201)" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>补充说明</label>
+        <input id="orderAddressNote" placeholder="如: 门禁密码、楼层指引等" />
+      </div>
+      <div class="form-group">
+        <label>联系电话 *</label>
+        <input id="orderPhone" type="tel" placeholder="手机号" maxlength="11" />
+      </div>
+
+      <h3 class="section-title" style="margin-top:20px">🪟 窗帘方案</h3>
+      <div id="orderItems"></div>
+      <button class="btn btn-outline" style="width:100%;margin-top:10px" onclick="addOrderItem()">+ 添加一组窗帘</button>
+
+      <h3 class="section-title" style="margin-top:20px">备注</h3>
+      <textarea id="orderNote" rows="2" placeholder="其他说明 (可选)"></textarea>
+
+      <div class="order-preview" id="orderPreview" style="display:none">
+        <div class="preview-title">预览</div>
+        <div id="orderPreviewContent"></div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:14px" onclick="submitOrder()">提交订单</button>
+    </div>
+  </div>
+
   <!-- Compare Bar -->
   <div class="compare-bar" id="compareBar" style="display:none">
     <span id="compareCount">0 款</span>
@@ -113,6 +153,10 @@
     <a href="#" onclick="return showPage('compare')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
       <span>对比</span>
+    </a>
+    <a href="#" onclick="return showPage('order')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <span>下单</span>
     </a>
   </nav>
 </div>
@@ -168,6 +212,116 @@ function renderFilters() {
     sel.innerHTML = '<option value="">不限</option>'
       + items.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
   });
+}
+
+let orderItemCount = 0;
+let orderItems = [];
+
+function initOrderPage() {
+  loadCommunities();
+  if (orderItems.length === 0) addOrderItem();
+}
+
+async function loadCommunities() {
+  try {
+    const res = await API.getSettings();
+    const communities = (res.settings || []).find(s => s.key === 'communities');
+    const sel = document.getElementById('orderCommunity');
+    if (communities) {
+      const list = JSON.parse(communities.value || '[]');
+      sel.innerHTML = '<option value="">请选择小区</option>'
+        + list.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+  } catch(e) {}
+}
+
+function addOrderItem() {
+  const id = orderItemCount++;
+  orderItems.push(id);
+  const div = document.createElement('div');
+  div.className = 'order-item';
+  div.id = 'order-item-' + id;
+  div.innerHTML = `
+    <div class="order-item-header">
+      <span>窗帘 #${orderItems.length}</span>
+      <button class="btn btn-sm btn-danger" onclick="removeOrderItem(${id})">删除</button>
+    </div>
+    <div class="form-group">
+      <label>选择窗帘 *</label>
+      <select id="oi-curtain-${id}" onchange="onOrderCurtainChange(${id})">
+        <option value="">请选择</option>
+        ${allCurtains.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>选择颜色</label>
+      <select id="oi-color-${id}"><option value="">请先选窗帘</option></select>
+    </div>
+    <div class="form-input-row">
+      <div class="form-group" style="flex:1"><label>宽度 (cm)</label><input id="oi-w-${id}" type="number" placeholder="窗宽" /></div>
+      <div class="form-group" style="flex:1"><label>高度 (cm)</label><input id="oi-h-${id}" type="number" placeholder="窗高" /></div>
+    </div>
+  `;
+  document.getElementById('orderItems').appendChild(div);
+}
+
+function removeOrderItem(id) {
+  orderItems = orderItems.filter(i => i !== id);
+  const el = document.getElementById('order-item-' + id);
+  if (el) el.remove();
+  document.querySelectorAll('#orderItems .order-item-header span').forEach((span, i) => {
+    span.textContent = '窗帘 #' + (i + 1);
+  });
+}
+
+function onOrderCurtainChange(id) {
+  const curtainId = +document.getElementById('oi-curtain-' + id).value;
+  const sel = document.getElementById('oi-color-' + id);
+  if (!curtainId) { sel.innerHTML = '<option value="">请先选窗帘</option>'; return; }
+  API.getCurtain(curtainId).then(c => {
+    sel.innerHTML = '<option value="">不指定</option>'
+      + (c.colors || []).map((col, i) => `<option value="${i}">${col.name || '颜色' + (i+1)}</option>`).join('');
+  });
+}
+
+function buildOrderPayload() {
+  const items = [];
+  document.querySelectorAll('#orderItems .order-item').forEach(el => {
+    const id = el.id.split('-')[2];
+    const curtainId = +document.getElementById('oi-curtain-' + id).value;
+    if (!curtainId) return;
+    items.push({
+      curtain_id: curtainId,
+      color_index: +document.getElementById('oi-color-' + id).value || null,
+      width_cm: +document.getElementById('oi-w-' + id).value || null,
+      height_cm: +document.getElementById('oi-h-' + id).value || null
+    });
+  });
+  return {
+    community: document.getElementById('orderCommunity').value,
+    building: document.getElementById('orderBuilding').value,
+    unit: document.getElementById('orderUnit').value,
+    room: document.getElementById('orderRoom').value,
+    address_note: document.getElementById('orderAddressNote').value,
+    phone: document.getElementById('orderPhone').value,
+    items,
+    note: document.getElementById('orderNote').value
+  };
+}
+
+async function submitOrder() {
+  const data = buildOrderPayload();
+  if (!data.community) return alert('请选择小区');
+  if (!data.room) return alert('请输入房间号');
+  if (!data.phone || !/^1\d{10}$/.test(data.phone)) return alert('请输入正确的手机号');
+  if (data.items.length === 0) return alert('请至少添加一组窗帘');
+  try {
+    const res = await API.submitOrder(data);
+    alert('下单成功！订单号: ' + res.order_no);
+    showPage('home');
+  } catch(e) {
+    alert(e.message || '下单失败');
+  }
 }
 
 let activeFilters = {};
@@ -455,14 +609,17 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   document.getElementById('page-' + name).classList.remove('hidden');
   document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.remove('active'));
-  document.getElementById('pageTitle').textContent = name === 'home' ? '产品展示' : name === 'favorites' ? '收藏' : '对比';
+  const titles = { home: '产品展示', favorites: '收藏', compare: '对比', order: '在线下单' };
+  document.getElementById('pageTitle').textContent = titles[name] || '产品展示';
   document.getElementById('backBtn').style.display = name === 'detail' ? 'inline' : 'none';
   document.getElementById('searchBar').style.display = name === 'home' ? 'flex' : 'none';
   document.getElementById('filterBar').style.display = name === 'home' ? 'flex' : 'none';
+  document.querySelector('.compare-bar').style.display = name === 'home' && compareIds.length > 0 ? 'flex' : 'none';
 
   if (name === 'home') loadCurtains();
   if (name === 'favorites') loadFavorites();
   if (name === 'compare') loadComparePage();
+  if (name === 'order') initOrderPage();
   return false;
 }
 

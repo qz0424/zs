@@ -101,5 +101,20 @@ const API = {
     return this.post('/api/admin/upload', fd);
   },
 
-  importBatch(items) { return this.post('/api/admin/import', { items }); }
+  importBatch(items) { return this.post('/api/admin/import', { items }); },
+
+  submitOrder(data) { return this.post('/api/orders', data); },
+
+  getOrders(params) {
+    const q = new URLSearchParams(params || {}).toString();
+    return this.get('/api/orders' + (q ? '?' + q : ''));
+  },
+
+  getOrder(id) { return this.get('/api/orders/' + id); },
+
+  setOrderStatus(id, status) { return this.put('/api/orders/' + id + '/status', { status }); },
+
+  getSettings() { return this.get('/api/settings'); },
+
+  saveSettings(data) { return this.put('/api/settings', data); }
 };

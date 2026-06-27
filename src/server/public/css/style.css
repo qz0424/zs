@@ -164,6 +164,20 @@ input, textarea { font-family: inherit; }
 .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; width: 600px; max-width: 100%; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
 .modal h3 { font-family: var(--font-heading); font-size: 18px; margin-bottom: 16px; }
 
+/* Order Form */
+.order-form { padding: 16px; }
+.order-form .section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--primary); }
+.order-form .form-group { margin-bottom: 12px; }
+.order-form label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+.order-form input, .order-form select, .order-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); outline: none; transition: border-color var(--transition); }
+.order-form input:focus, .order-form select:focus, .order-form textarea:focus { border-color: var(--accent); }
+.form-input-row { display: flex; gap: 8px; }
+.form-input-row .form-group { flex: 1; }
+.order-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.order-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; font-size: 14px; }
+.order-preview { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-top: 16px; }
+.preview-title { font-weight: 600; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+
 /* Responsive Admin */
 @media (max-width: 768px) {
   .admin-layout { flex-direction: column; }
