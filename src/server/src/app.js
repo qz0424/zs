@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const curtainRoutes = require('./routes/curtains');
 const categoryRoutes = require('./routes/categories');
 const favoriteRoutes = require('./routes/favorites');
+const collectionRoutes = require('./routes/collections');
 const uploadRoutes = require('./routes/upload');
 
 const app = express();
@@ -19,6 +20,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/curtains', curtainRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/collections', collectionRoutes);
 app.use('/api/admin', uploadRoutes);
 app.get('/admin', (req, res) => res.redirect('/admin/login.html'));
 app.get('/client', (req, res) => res.redirect('/client/'));

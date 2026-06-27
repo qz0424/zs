@@ -27,10 +27,10 @@
   <!-- Filters -->
   <div class="filters" id="filterBar">
     <select id="filterAll" onchange="filterByDim('all', this.value)"><option value="">全部</option></select>
-    <select id="filterCategory" onchange="filterByDim('category', this.value)"><option value="">分类</option></select>
-    <select id="filterMaterial" onchange="filterByDim('material', this.value)"><option value="">材质</option></select>
-    <select id="filterStyle" onchange="filterByDim('style', this.value)"><option value="">风格</option></select>
-    <select id="filterSpace" onchange="filterByDim('space', this.value)"><option value="">空间</option></select>
+    <div class="filter-group"><span class="filter-label">分类</span><select id="filterCategory" onchange="filterByDim('category', this.value)"><option value="">不限</option></select></div>
+    <div class="filter-group"><span class="filter-label">材质</span><select id="filterMaterial" onchange="filterByDim('material', this.value)"><option value="">不限</option></select></div>
+    <div class="filter-group"><span class="filter-label">风格</span><select id="filterStyle" onchange="filterByDim('style', this.value)"><option value="">不限</option></select></div>
+    <div class="filter-group"><span class="filter-label">空间</span><select id="filterSpace" onchange="filterByDim('space', this.value)"><option value="">不限</option></select></div>
   </div>
 
   <!-- Page: Home -->
@@ -69,6 +69,12 @@
 
   <!-- Page: Favorites -->
   <div class="page hidden" id="page-favorites">
+    <div class="fav-toolbar">
+      <button class="btn btn-sm btn-outline" onclick="showNewCollectionPrompt()">+ 新建</button>
+      <select id="favCollectionFilter" onchange="onCollectionChange()" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)"></select>
+      <button class="btn btn-sm btn-outline" id="favRenameBtn" style="display:none" onclick="renameCurrentCollection()">重命名</button>
+      <button class="btn btn-sm btn-outline" id="favDeleteBtn" style="display:none;color:#c0392b;border-color:#c0392b" onclick="deleteCurrentCollection()">删除</button>
+    </div>
     <div class="product-grid" id="favGrid"></div>
     <div class="empty-state" id="favEmpty" style="display:none">
       <div class="icon">
@@ -160,7 +166,7 @@ function renderFilters() {
   Object.keys(map).forEach(dim => {
     const sel = document.getElementById(map[dim]);
     const items = categories[dim] || [];
-    sel.innerHTML = '<option value="">' + ({ category: '分类', material: '材质', style: '风格', space: '空间' }[dim]) + '</option>'
+    sel.innerHTML = '<option value="">不限</option>'
       + items.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
   });
 }
@@ -238,12 +244,12 @@ function previewColor(el, curtainId) {
 function selectColor(colorId) {
   selectedColorId = colorId;
   if (!currentDetail) return;
-  const filtered = (currentDetail.media || []).filter(m => m.color_id === colorId);
+  const filtered = (currentDetail.media || []).filter(m => Number(m.color_id) === Number(colorId));
   const medias = filtered.length > 0 ? filtered : (currentDetail.media || []);
 
   const mainMedia = document.getElementById('mainMedia');
   if (medias.length > 0) {
-    mainMedia.innerHTML = `<img src="${medias[0].url}" onerror="this.src='/assets/placeholder.svg'" />`;
+    showMainMedia({ tagName: 'IMG', src: medias[0].url, classList: { add: function(){} } });
   } else {
     mainMedia.innerHTML = `<div style="width:100%;height:300px;background:#eee;display:flex;align-items:center;justify-content:center;color:#999;">暂无图片</div>`;
   }
@@ -257,7 +263,7 @@ function selectColor(colorId) {
   }).join('');
 
   document.querySelectorAll('.color-item').forEach(el => {
-    el.classList.toggle('active', parseInt(el.dataset.colorId) === colorId);
+    el.classList.toggle('active', Number(el.dataset.colorId) === Number(colorId));
   });
 }
 
@@ -326,18 +332,62 @@ let currentDetailId = null;
 
 async function loadFavorites() {
   try {
-    const favs = await API.getFavorites();
+    const collectionId = document.getElementById('favCollectionFilter').value || undefined;
+    const params = collectionId ? { collection_id: collectionId } : {};
+    const favs = await API.getFavorites(params);
     favIds = new Set(favs.map(f => f.id));
     renderGrid(document.getElementById('favGrid'), document.getElementById('favEmpty'), favs);
   } catch(e) {}
 }
 
+async function loadCollectionsForFilter() {
+  try {
+    const cols = await API.getCollections();
+    const sel = document.getElementById('favCollectionFilter');
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">全部收藏</option>' + cols.map(c => `<option value="${c.id}">${c.name} (${c.count})</option>`).join('');
+    if (currentVal) sel.value = currentVal;
+    updateCollectionButtons();
+  } catch(e) {}
+}
+
+function updateCollectionButtons() {
+  const val = document.getElementById('favCollectionFilter').value;
+  document.getElementById('favRenameBtn').style.display = val ? 'inline-block' : 'none';
+  document.getElementById('favDeleteBtn').style.display = val ? 'inline-block' : 'none';
+}
+
+function onCollectionChange() {
+  updateCollectionButtons();
+  loadFavorites();
+}
+
+function renameCurrentCollection() {
+  const sel = document.getElementById('favCollectionFilter');
+  const id = parseInt(sel.value);
+  const text = sel.options[sel.selectedIndex].text;
+  const name = text.replace(/ \(\d+\)$/, '');
+  const newName = prompt('重命名收藏夹：', name);
+  if (newName && newName.trim() && newName.trim() !== name) {
+    API.renameCollection(id, newName.trim()).then(() => { loadCollectionsForFilter(); toast('已重命名'); }).catch(e => toast(e.message));
+  }
+}
+
+function deleteCurrentCollection() {
+  const sel = document.getElementById('favCollectionFilter');
+  if (confirm('确定删除此收藏夹？收藏不会丢失。')) {
+    API.deleteCollection(parseInt(sel.value)).then(() => { sel.value = ''; loadCollectionsForFilter(); loadFavorites(); toast('收藏夹已删除'); }).catch(e => toast(e.message));
+  }
+}
+
 async function toggleFav(id, add) {
   try {
-    await API.toggleFavorite(id, add);
+    const onFavPage = document.getElementById('page-favorites').classList.contains('hidden') === false;
+    const collectionId = onFavPage && add ? (parseInt(document.getElementById('favCollectionFilter').value) || null) : null;
+    await API.toggleFavorite(id, add, add ? collectionId : undefined);
     if (add) favIds.add(id); else favIds.delete(id);
     toast(add ? '已收藏' : '已取消收藏');
-    if (document.getElementById('page-favorites').classList.contains('hidden') === false) loadFavorites();
+    if (document.getElementById('page-favorites').classList.contains('hidden') === false) { loadFavorites(); loadCollectionsForFilter(); }
     if (document.getElementById('page-detail').classList.contains('hidden') === false) {
       document.getElementById('detailFavText').textContent = add ? '已收藏' : '收藏';
     }
@@ -355,7 +405,8 @@ function toggleCompare(id) {
   }
   localStorage.setItem('compareIds', JSON.stringify(compareIds));
   updateCompareBar();
-  loadCurtains();
+  if (!document.getElementById('page-home').classList.contains('hidden')) loadCurtains();
+  if (!document.getElementById('page-favorites').classList.contains('hidden')) loadFavorites();
   if (!document.getElementById('page-compare').classList.contains('hidden')) loadComparePage();
 }
 
@@ -435,6 +486,7 @@ function toast(msg) {
 loadCategories();
 loadCurtains();
 loadFavorites();
+loadCollectionsForFilter();
 updateCompareBar();
 </script>
 <script>

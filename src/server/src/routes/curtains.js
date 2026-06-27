@@ -9,6 +9,10 @@ function getCurtain(id) {
   if (!curtain) return null;
   curtain.colors = db.prepare('SELECT * FROM curtain_colors WHERE curtain_id = ? ORDER BY sort_order').all(id);
   curtain.media = db.prepare('SELECT * FROM curtain_media WHERE curtain_id = ? ORDER BY sort_order').all(id);
+  curtain.colors.forEach(cl => {
+    const m = db.prepare("SELECT url FROM curtain_media WHERE color_id = ? AND type = 'image' LIMIT 1").get(cl.id);
+    cl.media_url = m?.url || null;
+  });
   curtain.category = db.prepare('SELECT name FROM category_options WHERE id = ?').get(curtain.category_id);
   curtain.material = db.prepare('SELECT name FROM category_options WHERE id = ?').get(curtain.material_id);
   curtain.style = db.prepare('SELECT name FROM category_options WHERE id = ?').get(curtain.style_id);
@@ -65,32 +69,69 @@ router.post('/', auth, (req, res) => {
   const { name, category_id, material_id, style_id, light_level_id, space_id, size_range, description, colors, media } = req.body;
   if (!name) return res.status(400).json({ error: '款式名称不能为空' });
 
-  const info = db.prepare(`INSERT INTO curtains (name, category_id, material_id, style_id, light_level_id, space_id, size_range, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(name, category_id || null, material_id || null, style_id || null, light_level_id || null, space_id || null, size_range || null, description || null);
+  const createCurtain = db.transaction(() => {
+    const info = db.prepare(`INSERT INTO curtains (name, category_id, material_id, style_id, light_level_id, space_id, size_range, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(name, category_id || null, material_id || null, style_id || null, light_level_id || null, space_id || null, size_range || null, description || null);
+    const curtainId = Number(info.lastInsertRowid);
 
-  const curtainId = info.lastInsertRowid;
+    const colorIds = [];
+    if (colors) {
+      const stmt = db.prepare('INSERT INTO curtain_colors (curtain_id, color_name, color_code, sort_order) VALUES (?, ?, ?, ?)');
+      colors.forEach((c, i) => {
+        const ci = stmt.run(curtainId, c.color_name, c.color_code || null, i);
+        colorIds.push(Number(ci.lastInsertRowid));
+      });
+    }
 
-  if (colors) {
-    const stmt = db.prepare('INSERT INTO curtain_colors (curtain_id, color_name, color_code, sort_order) VALUES (?, ?, ?, ?)');
-    colors.forEach((c, i) => stmt.run(curtainId, c.color_name, c.color_code || null, i));
-  }
+    if (media) {
+      const stmt = db.prepare('INSERT INTO curtain_media (curtain_id, color_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)');
+      media.forEach((m, i) => {
+        const resolvedColorId = (m.color_id != null && colorIds[m.color_id] != null) ? colorIds[m.color_id] : null;
+        stmt.run(curtainId, resolvedColorId, m.type, m.url, i);
+      });
+    }
 
-  if (media) {
-    const stmt = db.prepare('INSERT INTO curtain_media (curtain_id, color_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)');
-    media.forEach((m, i) => stmt.run(curtainId, m.color_id || null, m.type, m.url, i));
-  }
+    return curtainId;
+  });
 
+  const curtainId = createCurtain();
   res.json(getCurtain(curtainId));
 });
 
 router.put('/:id', auth, (req, res) => {
-  const { name, category_id, material_id, style_id, light_level_id, space_id, size_range, description } = req.body;
+  const { name, category_id, material_id, style_id, light_level_id, space_id, size_range, description, colors, media } = req.body;
   const existing = db.prepare('SELECT id FROM curtains WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: '款式不存在' });
 
-  db.prepare(`UPDATE curtains SET name=?, category_id=?, material_id=?, style_id=?, light_level_id=?, space_id=?, size_range=?, description=?, updated_at=datetime('now') WHERE id=?`)
-    .run(name || existing.name, category_id ?? null, material_id ?? null, style_id ?? null, light_level_id ?? null, space_id ?? null, size_range ?? null, description ?? null, req.params.id);
+  const updateCurtain = db.transaction(() => {
+    db.prepare(`UPDATE curtains SET name=?, category_id=?, material_id=?, style_id=?, light_level_id=?, space_id=?, size_range=?, description=?, updated_at=datetime('now') WHERE id=?`)
+      .run(name || existing.name, category_id ?? null, material_id ?? null, style_id ?? null, light_level_id ?? null, space_id ?? null, size_range ?? null, description ?? null, req.params.id);
 
+    if (colors !== undefined) {
+      db.prepare('DELETE FROM curtain_colors WHERE curtain_id = ?').run(req.params.id);
+      const stmt = db.prepare('INSERT INTO curtain_colors (curtain_id, color_name, color_code, sort_order) VALUES (?, ?, ?, ?)');
+      const colorIds = [];
+      colors.forEach((c, i) => {
+        const info = stmt.run(req.params.id, c.color_name, c.color_code || null, i);
+        colorIds.push(Number(info.lastInsertRowid));
+      });
+
+      if (media !== undefined) {
+        db.prepare('DELETE FROM curtain_media WHERE curtain_id = ?').run(req.params.id);
+        const mstmt = db.prepare('INSERT INTO curtain_media (curtain_id, color_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)');
+        media.forEach((m, i) => {
+          const resolvedColorId = (m.color_id != null && colorIds[m.color_id] != null) ? colorIds[m.color_id] : null;
+          mstmt.run(req.params.id, resolvedColorId, m.type, m.url, i);
+        });
+      }
+    } else if (media !== undefined) {
+      db.prepare('DELETE FROM curtain_media WHERE curtain_id = ?').run(req.params.id);
+      const mstmt = db.prepare('INSERT INTO curtain_media (curtain_id, color_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)');
+      media.forEach((m, i) => mstmt.run(req.params.id, m.color_id || null, m.type, m.url, i));
+    }
+  });
+
+  updateCurtain();
   res.json(getCurtain(req.params.id));
 });
 

@@ -55,11 +55,30 @@ const API = {
 
   deleteCategory(id) { return this.del('/api/categories/' + id); },
 
-  getFavorites() { return this.get('/api/favorites'); },
-
-  toggleFavorite(curtainId, add) {
-    return add ? this.post('/api/favorites', { curtain_id: curtainId }) : this.del('/api/favorites/' + curtainId);
+  getFavorites(params) {
+    const q = new URLSearchParams(params || {}).toString();
+    return this.get('/api/favorites' + (q ? '?' + q : ''));
   },
+
+  toggleFavorite(curtainId, add, collectionId) {
+    if (add) {
+      return this.post('/api/favorites', { curtain_id: curtainId, collection_id: collectionId || null });
+    }
+    const q = collectionId ? '?collection_id=' + collectionId : '';
+    return this.del('/api/favorites/' + curtainId + q);
+  },
+
+  moveFavorite(favId, collectionId) {
+    return this.put('/api/favorites/' + favId + '/move', { collection_id: collectionId || null });
+  },
+
+  getCollections() { return this.get('/api/collections'); },
+
+  createCollection(name) { return this.post('/api/collections', { name }); },
+
+  renameCollection(id, name) { return this.put('/api/collections/' + id, { name }); },
+
+  deleteCollection(id) { return this.del('/api/collections/' + id); },
 
   uploadFile(file) {
     const fd = new FormData();

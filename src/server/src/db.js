@@ -62,9 +62,20 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS favorites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     curtain_id INTEGER NOT NULL,
+    collection_id INTEGER,
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (curtain_id) REFERENCES curtains(id) ON DELETE CASCADE
+    FOREIGN KEY (curtain_id) REFERENCES curtains(id) ON DELETE CASCADE,
+    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS collections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+try { db.exec("ALTER TABLE favorites ADD COLUMN collection_id INTEGER REFERENCES collections(id) ON DELETE SET NULL"); } catch(e) {}
 
 module.exports = db;

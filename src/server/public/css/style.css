@@ -39,7 +39,9 @@ input, textarea { font-family: inherit; }
 .search-bar button { padding: 10px 20px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; transition: opacity var(--transition); }
 .search-bar button:hover { opacity: .9; }
 
-.filters { display: flex; gap: 6px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.filters { display: flex; gap: 6px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+.filter-group { display: flex; align-items: center; gap: 4px; }
+.filter-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; white-space: nowrap; }
 .filters select { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); background: var(--bg); outline: none; cursor: pointer; appearance: auto; transition: border-color var(--transition); }
 .filters select:focus { border-color: var(--accent); }
 .history-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
@@ -49,6 +51,7 @@ input, textarea { font-family: inherit; }
 .history-item { flex-shrink: 0; width: 100px; cursor: pointer; }
 .history-item img { width: 100px; height: 75px; object-fit: cover; border-radius: 8px; background: var(--border); }
 .history-item .name { font-size: 11px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+.fav-toolbar { display: flex; gap: 8px; padding: 10px 12px; align-items: center; border-bottom: 1px solid var(--border); }
 
 .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px; max-width: 1200px; margin: 0 auto; }
 @media (min-width: 640px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
