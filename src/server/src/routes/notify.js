@@ -19,15 +19,14 @@ router.get('/', (req, res) => {
   });
 });
 
-async function sendToServerChan(title, desp) {
+async function sendToWechat(title, desp) {
   try {
     const row = await db.prepare("SELECT value FROM settings WHERE key = 'sckey'").get();
     if (!row || !row.value) return;
-    const url = `https://sctapi.ftqq.com/${row.value}.send`;
-    const body = new URLSearchParams({ title, desp });
-    await fetch(url, { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    const url = `https://www.pushplus.plus/send?token=${encodeURIComponent(row.value)}&title=${encodeURIComponent(title)}&content=${encodeURIComponent(desp)}&template=html`;
+    await fetch(url);
   } catch(e) {
-    console.error('Server酱推送失败:', e.message);
+    console.error('PushPlus推送失败:', e.message);
   }
 }
 
@@ -38,7 +37,7 @@ function notify(data) {
   if (data.type === 'new_order') {
     const title = `新订单: ${data.order_no}`;
     const desp = `订单号: ${data.order_no}\n时间: ${data.time}\n\n请尽快处理`;
-    sendToServerChan(title, desp);
+    sendToWechat(title, desp);
   }
 }
 
