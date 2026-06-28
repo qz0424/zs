@@ -937,10 +937,10 @@ async function renderSettingsTab() {
         </div>
         <label style="margin-top:12px">或输入图片URL</label><input id="set_qrcode" placeholder="二维码图片链接" />
       </div>
-      <h3 style="margin-top:20px">微信通知</h3>
+      <h3 style="margin-top:20px">钉钉通知</h3>
       <div class="admin-form">
-        <label>PushPlus Token</label><input id="set_sckey" placeholder="在 pushplus.plus 获取的 Token" />
-        <p style="font-size:12px;color:#6b7280;margin-top:-8px">新订单将自动推送到微信。获取方式：<a href="https://www.pushplus.plus/" target="_blank" style="color:var(--accent)">pushplus.plus</a>（免费200条/天）</p>
+        <label>钉钉机器人 Webhook</label><input id="set_webhook" placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx" />
+        <p style="font-size:12px;color:#6b7280;margin-top:-8px">钉钉 → 建群 → 群设置 → 智能群助手 → 添加机器人 → 自定义 → 复制 Webhook 地址</p>
       </div>
       <h3 style="margin-top:20px">小区列表</h3>
       <div id="communityList" style="margin-bottom:12px"></div>
@@ -964,7 +964,7 @@ async function loadSettings() {
     document.getElementById('set_phone').value = map.phone || '';
     document.getElementById('set_wechat').value = map.wechat || '';
     document.getElementById('set_qrcode').value = map.qrcode_url || '';
-    document.getElementById('set_sckey').value = map.sckey || '';
+    document.getElementById('set_webhook').value = map.webhook_url || '';
     if (map.qrcode_url) {
       document.getElementById('qrPreview').innerHTML = `<img src="${map.qrcode_url}" style="max-width:160px;border-radius:8px;border:1px solid var(--border)" />`;
     }
@@ -1013,7 +1013,7 @@ async function saveSettings() {
       phone: document.getElementById('set_phone').value,
       wechat: document.getElementById('set_wechat').value,
       qrcode_url: document.getElementById('set_qrcode').value,
-      sckey: document.getElementById('set_sckey').value
+      webhook_url: document.getElementById('set_webhook').value
     });
     toast('设置已保存');
   } catch(e) {

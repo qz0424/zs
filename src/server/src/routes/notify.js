@@ -19,14 +19,17 @@ router.get('/', (req, res) => {
   });
 });
 
-async function sendToWechat(title, desp) {
+async function sendToDingTalk(title, desp) {
   try {
-    const row = await db.prepare("SELECT value FROM settings WHERE key = 'sckey'").get();
+    const row = await db.prepare("SELECT value FROM settings WHERE key = 'webhook_url'").get();
     if (!row || !row.value) return;
-    const url = `https://www.pushplus.plus/send?token=${encodeURIComponent(row.value)}&title=${encodeURIComponent(title)}&content=${encodeURIComponent(desp)}&template=html`;
-    await fetch(url);
+    await fetch(row.value, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ msgtype: 'text', text: { content: `${title}\n${desp}` } })
+    });
   } catch(e) {
-    console.error('PushPlus推送失败:', e.message);
+    console.error('钉钉推送失败:', e.message);
   }
 }
 
@@ -37,7 +40,7 @@ function notify(data) {
   if (data.type === 'new_order') {
     const title = `新订单: ${data.order_no}`;
     const desp = `订单号: ${data.order_no}\n时间: ${data.time}\n\n请尽快处理`;
-    sendToWechat(title, desp);
+    sendToDingTalk(title, desp);
   }
 }
 
