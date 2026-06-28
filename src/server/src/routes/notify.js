@@ -39,7 +39,7 @@ function notify(data) {
 
   if (data.type === 'new_order') {
     const title = `新订单: ${data.order_no}`;
-    const desp = `订单号: ${data.order_no}\n时间: ${data.time}\n\n请尽快处理`;
+    const desp = `订单号: ${data.order_no}\n时间: ${data.time}\n\n管理端: https://unsubtle-drivable-itunes.ngrok-free.dev/admin/dashboard.html\n\n请尽快处理`;
     sendToDingTalk(title, desp);
   }
 }

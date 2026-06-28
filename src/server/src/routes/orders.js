@@ -41,6 +41,26 @@ router.post('/', async (req, res) => {
   res.json(result);
 });
 
+router.get('/detail/:id', async (req, res) => {
+  const phone = (req.query.phone || '').trim();
+  if (!phone) return res.status(400).json({ error: '请提供手机号' });
+
+  const order = await db.prepare('SELECT * FROM orders WHERE id = ? AND customer_phone LIKE ?').get(req.params.id, '%' + phone + '%');
+  if (!order) return res.status(404).json({ error: '订单不存在' });
+
+  order.items = await db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY sort_order').all(order.id);
+  for (const item of order.items) {
+    item.curtain = await db.prepare(`SELECT c.id, c.name, c.size_range, co.name as category_name FROM curtains c LEFT JOIN category_options co ON co.id = c.category_id WHERE c.id = ?`).get(item.curtain_id);
+    item.color = await db.prepare('SELECT id, color_name, color_code FROM curtain_colors WHERE id = ?').get(item.color_id);
+    if (item.curtain) {
+      const cover = await db.prepare("SELECT url FROM curtain_media WHERE curtain_id = ? AND type = 'image' ORDER BY sort_order LIMIT 1").get(item.curtain_id);
+      item.curtain.cover = cover?.url || null;
+    }
+  }
+  order.logs = await db.prepare('SELECT * FROM order_status_log WHERE order_id = ? ORDER BY changed_at DESC').all(order.id);
+  res.json(order);
+});
+
 router.get('/lookup', async (req, res) => {
   const phone = (req.query.phone || '').trim();
   if (!phone || phone.length < 3) return res.status(400).json({ error: '请输入手机号' });

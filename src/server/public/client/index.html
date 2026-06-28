@@ -163,6 +163,11 @@
     </div>
   </div>
 
+  <!-- Page: Order Detail -->
+  <div class="page hidden" id="page-orderdetail">
+    <div style="padding:16px" id="orderDetailContent"></div>
+  </div>
+
   <!-- Compare Bar -->
   <div class="compare-bar" id="compareBar" style="display:none">
     <span id="compareCount">0 款</span>
@@ -621,6 +626,77 @@ async function toggleFav(id, add) {
   } catch(e) { toast('操作失败'); }
 }
 
+let lastLookupPhone = '';
+
+function openOrderDetail(orderId, phone) {
+  lastLookupPhone = phone;
+  loadOrderDetail(orderId, phone);
+}
+
+async function loadOrderDetail(orderId, phone) {
+  const container = document.getElementById('orderDetailContent');
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:#999">加载中...</div>';
+  showPage('orderdetail');
+  document.getElementById('pageTitle').textContent = '订单详情';
+  document.getElementById('backBtn').style.display = 'inline';
+  document.getElementById('searchBar').style.display = 'none';
+  document.getElementById('filterBar').style.display = 'none';
+  try {
+    const o = await API.lookupOrderDetail(orderId, phone);
+    const st = orderStatusMap[o.status] || { text: o.status, color: '#6b7280', bg: '#f3f4f6' };
+    const items = (o.items || []).map((it, i) => {
+      const cover = it.curtain && it.curtain.cover ? it.curtain.cover : '/assets/placeholder.svg';
+      const curtainName = it.curtain ? it.curtain.name : '未知款式';
+      const categoryName = it.curtain && it.curtain.category_name ? it.curtain.category_name : '';
+      const sizeRange = it.curtain && it.curtain.size_range ? it.curtain.size_range : '';
+      const colorDot = it.color && it.color.color_code ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${it.color.color_code};border:1px solid rgba(0,0,0,.15);vertical-align:middle"></span>` : '';
+      const colorName = it.color ? it.color.color_name : '未选颜色';
+      const size = it.width && it.height ? `${it.width}×${it.height}cm` : '未量尺寸';
+      return `<div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid var(--border);display:flex;gap:12px;align-items:center">
+        <img src="${cover}" style="width:72px;height:72px;border-radius:8px;object-fit:cover;flex-shrink:0" onerror="this.src='/assets/placeholder.svg'" />
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px">${curtainName}</div>
+          ${categoryName ? `<div style="font-size:12px;color:#6b7280">型号：${categoryName}</div>` : ''}
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">颜色：${colorDot} ${colorName}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">尺寸：${size}</div>
+          ${sizeRange ? `<div style="font-size:11px;color:#9ca3af;margin-top:2px">可选范围：${sizeRange}</div>` : ''}
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">📍 使用位置：${it.space || '未指定'}</div>
+          ${it.note ? `<div style="font-size:12px;color:#9ca3af;margin-top:2px">备注：${it.note}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    const logs = (o.logs || []).map(l => {
+      const fromText = l.from_status ? (orderStatusMap[l.from_status]?.text || l.from_status) : '创建';
+      const toText = orderStatusMap[l.to_status]?.text || l.to_status;
+      return `<div style="font-size:12px;color:#6b7280;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span style="color:#9ca3af">${new Date(l.changed_at).toLocaleString('zh-CN')}</span>
+        ${fromText} → <span style="font-weight:500">${toText}</span>
+      </div>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:14px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700;font-size:16px">#${o.order_no || o.id}</div>
+          <span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;color:${st.color};background:${st.bg}">${st.text}</span>
+        </div>
+        <div style="font-size:13px;color:#6b7280;margin-top:8px">📍 ${o.community || ''}${o.building ? o.building + '号楼' : ''}${o.unit ? o.unit + '单元' : ''}${o.room || ''}</div>
+        <div style="font-size:13px;color:#6b7280;margin-top:2px">📞 ${o.customer_phone || ''}</div>
+        ${o.address_detail ? `<div style="font-size:12px;color:#9ca3af;margin-top:4px">📝 ${o.address_detail}</div>` : ''}
+        ${o.note ? `<div style="font-size:12px;color:#9ca3af;margin-top:4px">💬 ${o.note}</div>` : ''}
+        <div style="font-size:11px;color:#9ca3af;margin-top:6px">提交时间：${new Date(o.created_at).toLocaleString('zh-CN')}</div>
+      </div>
+      <div style="font-weight:600;font-size:14px;margin-bottom:10px">🪟 窗帘明细（共 ${items.length || 0} 组）</div>
+      ${items}
+      ${logs ? `<div style="font-weight:600;font-size:14px;margin:16px 0 10px">📋 状态记录</div><div style="background:var(--card);border-radius:12px;padding:12px;border:1px solid var(--border)">${logs}</div>` : ''}
+      <button class="btn btn-outline" style="width:100%;margin-top:16px" onclick="showPage('myorders'); document.getElementById('myordersPhone').value='${o.customer_phone || ''}'; lookupMyOrders()">← 返回订单列表</button>
+    `;
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">加载失败：' + (e.message || '未知错误') + '</div>';
+  }
+}
+
 const orderStatusMap = {
   pending: { text: '待确认', color: '#f59e0b', bg: '#fef3c7' },
   confirmed: { text: '已确认', color: '#3b82f6', bg: '#dbeafe' },
@@ -649,22 +725,17 @@ async function lookupMyOrders() {
     empty.style.display = 'none';
     list.innerHTML = orders.map(o => {
       const st = orderStatusMap[o.status] || { text: o.status, color: '#6b7280', bg: '#f3f4f6' };
-      const items = (o.items || []).map(it => {
-        const curtain = it.curtain ? it.curtain.name : '未知款式';
-        const color = it.color ? it.color.color_name : '';
-        const colorDot = it.color && it.color.color_code ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${it.color.color_code};border:1px solid rgba(0,0,0,.1);vertical-align:middle;margin-right:4px"></span>` : '';
-        const size = it.width && it.height ? `${it.width}×${it.height}cm` : '';
-        return `<div style="font-size:13px;color:#374151;margin-top:4px">${colorDot}${curtain}${color ? ' · ' + color : ''}${size ? ' · ' + size : ''}</div>`;
-      }).join('');
-      return `<div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--border)">
+      const itemCount = (o.items || []).length;
+      return `<div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--border);cursor:pointer" onclick="openOrderDetail(${o.id}, '${o.customer_phone}')">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-weight:600;font-size:14px">#${o.order_no || o.id}</div>
           <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;color:${st.color};background:${st.bg}">${st.text}</span>
         </div>
         <div style="font-size:12px;color:#6b7280;margin-top:6px">📍 ${o.community || ''}${o.building ? o.building + '号楼' : ''}${o.unit ? o.unit + '单元' : ''}${o.room || ''}</div>
         <div style="font-size:12px;color:#6b7280;margin-top:2px">📞 ${o.customer_phone || ''}</div>
-        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">${items}</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">🪟 共 ${itemCount} 组窗帘</div>
         <div style="font-size:11px;color:#9ca3af;margin-top:8px">提交时间：${new Date(o.created_at).toLocaleString('zh-CN')}</div>
+        <div style="text-align:right;margin-top:4px"><span style="font-size:12px;color:var(--accent,#c4956a)">查看详情 →</span></div>
       </div>`;
     }).join('');
   } catch(e) {
@@ -734,7 +805,7 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   document.getElementById('page-' + name).classList.remove('hidden');
   document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.remove('active'));
-  const titles = { home: siteTitle, favorites: '收藏', compare: '对比', order: '在线下单', myorders: '我的订单' };
+  const titles = { home: siteTitle, favorites: '收藏', compare: '对比', order: '在线下单', myorders: '我的订单', orderdetail: '订单详情' };
   document.getElementById('pageTitle').textContent = titles[name] || '产品展示';
   document.getElementById('backBtn').style.display = name === 'detail' ? 'inline' : 'none';
   document.getElementById('searchBar').style.display = name === 'home' ? 'flex' : 'none';
@@ -753,6 +824,7 @@ function showPage(name) {
 
 document.getElementById('backBtn').onclick = () => {
   if (!document.getElementById('page-detail').classList.contains('hidden')) showPage('home');
+  else if (!document.getElementById('page-orderdetail').classList.contains('hidden')) showPage('myorders');
 };
 
 function toast(msg) {
