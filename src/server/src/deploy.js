@@ -24,6 +24,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  res.setHeader('ngrok-skip-browser-warning', 'true');
+  next();
+});
+
 // Admin pages (with auth) — must come before general static
 const adminPages = express.static(path.join(__dirname, '..', 'public', 'admin'));
 app.use('/admin', (req, res, next) => {
