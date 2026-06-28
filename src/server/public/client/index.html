@@ -100,7 +100,7 @@
       <h3 class="section-title">📍 地址信息</h3>
       <div class="form-group">
         <label>小区名称 *</label>
-        <select id="orderCommunity"><option value="">请选择小区</option></select>
+        <input id="orderCommunity" placeholder="请输入小区名称" />
         <div class="form-input-row" style="margin-top:6px">
           <input id="orderBuilding" placeholder="号楼" />
           <input id="orderUnit" placeholder="单元" />
@@ -216,23 +216,10 @@ function renderFilters() {
 
 let orderItemCount = 0;
 let orderItems = [];
+const roomTypes = ['客厅', '主卧', '次卧', '儿童房', '书房', '餐厅', '阳台', '飘窗', '榻榻米', '玄关', '其他'];
 
 function initOrderPage() {
-  loadCommunities();
   if (orderItems.length === 0) addOrderItem();
-}
-
-async function loadCommunities() {
-  try {
-    const res = await API.getSettings();
-    const communities = (res.settings || []).find(s => s.key === 'communities');
-    const sel = document.getElementById('orderCommunity');
-    if (communities) {
-      const list = JSON.parse(communities.value || '[]');
-      sel.innerHTML = '<option value="">请选择小区</option>'
-        + list.map(c => `<option value="${c}">${c}</option>`).join('');
-    }
-  } catch(e) {}
 }
 
 function addOrderItem() {
@@ -243,8 +230,14 @@ function addOrderItem() {
   div.id = 'order-item-' + id;
   div.innerHTML = `
     <div class="order-item-header">
-      <span>窗帘 #${orderItems.length}</span>
+      <span id="oi-title-${id}">窗帘 #${orderItems.length}</span>
       <button class="btn btn-sm btn-danger" onclick="removeOrderItem(${id})">删除</button>
+    </div>
+    <div class="form-group">
+      <label>房间类型 *</label>
+      <div class="room-type-grid" id="oi-room-${id}">
+        ${roomTypes.map((r, i) => `<div class="room-type-btn${i === 0 ? ' active' : ''}" onclick="selectRoom(${id}, ${i})" data-index="${i}">${r}</div>`).join('')}
+      </div>
     </div>
     <div class="form-group">
       <label>选择窗帘 *</label>
@@ -255,7 +248,7 @@ function addOrderItem() {
     </div>
     <div class="form-group">
       <label>选择颜色</label>
-      <select id="oi-color-${id}"><option value="">请先选窗帘</option></select>
+      <div class="color-picker" id="oi-colors-${id}"><span style="color:var(--text-secondary);font-size:13px">请先选窗帘</span></div>
     </div>
     <div class="form-input-row">
       <div class="form-group" style="flex:1"><label>宽度 (cm)</label><input id="oi-w-${id}" type="number" placeholder="窗宽" /></div>
@@ -265,23 +258,51 @@ function addOrderItem() {
   document.getElementById('orderItems').appendChild(div);
 }
 
+function selectRoom(itemId, roomIndex) {
+  const grid = document.getElementById('oi-room-' + itemId);
+  grid.querySelectorAll('.room-type-btn').forEach(b => b.classList.remove('active'));
+  grid.querySelector(`[data-index="${roomIndex}"]`).classList.add('active');
+  const title = document.getElementById('oi-title-' + itemId);
+  if (title) title.textContent = roomTypes[roomIndex];
+}
+
 function removeOrderItem(id) {
   orderItems = orderItems.filter(i => i !== id);
   const el = document.getElementById('order-item-' + id);
   if (el) el.remove();
-  document.querySelectorAll('#orderItems .order-item-header span').forEach((span, i) => {
+  document.querySelectorAll('#orderItems .order-item-header span[id^="oi-title-"]').forEach((span, i) => {
     span.textContent = '窗帘 #' + (i + 1);
   });
 }
 
 function onOrderCurtainChange(id) {
   const curtainId = +document.getElementById('oi-curtain-' + id).value;
-  const sel = document.getElementById('oi-color-' + id);
-  if (!curtainId) { sel.innerHTML = '<option value="">请先选窗帘</option>'; return; }
+  const container = document.getElementById('oi-colors-' + id);
+  if (!curtainId) { container.innerHTML = '<span style="color:var(--text-secondary);font-size:13px">请先选窗帘</span>'; return; }
   API.getCurtain(curtainId).then(c => {
-    sel.innerHTML = '<option value="">不指定</option>'
-      + (c.colors || []).map((col, i) => `<option value="${i}">${col.name || '颜色' + (i+1)}</option>`).join('');
+    if (!c.colors || c.colors.length === 0) {
+      container.innerHTML = '<span style="color:var(--text-secondary);font-size:13px">暂无颜色可选</span>';
+      return;
+    }
+    container.innerHTML = c.colors.map((col, i) => {
+      const colorVal = col.color || '#ccc';
+      return `<div class="color-option${i === 0 ? ' active' : ''}" onclick="selectColor(${id}, ${i})" data-index="${i}">
+        <span class="color-dot" style="background:${colorVal}"></span>
+        <span class="color-name">${col.name || '颜色' + (i+1)}</span>
+      </div>`;
+    }).join('');
   });
+}
+
+function selectColor(itemId, colorIndex) {
+  const container = document.getElementById('oi-colors-' + itemId);
+  container.querySelectorAll('.color-option').forEach(b => b.classList.remove('active'));
+  container.querySelector(`[data-index="${colorIndex}"]`).classList.add('active');
+}
+
+function getColorIndex(itemId) {
+  const active = document.querySelector('#oi-colors-' + itemId + ' .color-option.active');
+  return active ? +active.dataset.index : null;
 }
 
 function buildOrderPayload() {
@@ -290,9 +311,13 @@ function buildOrderPayload() {
     const id = el.id.split('-')[2];
     const curtainId = +document.getElementById('oi-curtain-' + id).value;
     if (!curtainId) return;
+    const roomGrid = document.getElementById('oi-room-' + id);
+    const activeRoom = roomGrid.querySelector('.room-type-btn.active');
+    const roomType = activeRoom ? roomTypes[+activeRoom.dataset.index] : '';
     items.push({
+      room_type: roomType,
       curtain_id: curtainId,
-      color_index: +document.getElementById('oi-color-' + id).value || null,
+      color_index: getColorIndex(id),
       width_cm: +document.getElementById('oi-w-' + id).value || null,
       height_cm: +document.getElementById('oi-h-' + id).value || null
     });
