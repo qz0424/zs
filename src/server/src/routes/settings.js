@@ -4,7 +4,7 @@ const auth = require('../middleware/auth');
 
 const router = Router();
 
-const PUBLIC_KEYS = ['phone', 'wechat', 'wechat_qr', 'business_name', 'slogan'];
+const PUBLIC_KEYS = ['phone', 'wechat', 'wechat_qr', 'business_name', 'slogan', 'site_title', 'qrcode_url'];
 
 router.get('/', async (req, res) => {
   const rows = await db.prepare('SELECT key, value FROM settings').all();

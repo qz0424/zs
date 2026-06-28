@@ -921,11 +921,24 @@ async function renderSettingsTab() {
   const main = document.getElementById('adminMain');
   main.innerHTML = `<h2>系统设置</h2>
     <div class="admin-card" id="settingsForm">
-      <h3>商家信息</h3>
+      <h3>站点信息</h3>
       <div class="admin-form">
+        <label>站点标题</label><input id="set_site_title" placeholder="如: 伊居窗帘" />
         <label>联系电话</label><input id="set_phone" placeholder="客户下单时显示的电话" />
         <label>微信号</label><input id="set_wechat" placeholder="微信号" />
-        <label>二维码图片URL</label><input id="set_qrcode" placeholder="微信/支付宝收款码图片链接" />
+      </div>
+      <h3 style="margin-top:20px">微信二维码</h3>
+      <div class="admin-form">
+        <div id="qrPreview" style="margin-bottom:12px"></div>
+        <div class="upload-zone" id="qrUploadZone" onclick="document.getElementById('qrFileInput').click()">
+          <input type="file" id="qrFileInput" accept="image/*" onchange="uploadQRCode(this)" style="display:none" />
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p>点击上传二维码图片</p>
+        </div>
+        <label style="margin-top:12px">或输入图片URL</label><input id="set_qrcode" placeholder="二维码图片链接" />
+      </div>
+      <h3 style="margin-top:20px">通知</h3>
+      <div class="admin-form">
         <label>企业微信/钉钉 Webhook</label><input id="set_webhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx" />
       </div>
       <h3 style="margin-top:20px">小区列表</h3>
@@ -946,10 +959,14 @@ async function loadSettings() {
     const res = await API.getSettings();
     const map = {};
     (res.settings || []).forEach(s => { map[s.key] = s.value; });
+    document.getElementById('set_site_title').value = map.site_title || '';
     document.getElementById('set_phone').value = map.phone || '';
     document.getElementById('set_wechat').value = map.wechat || '';
     document.getElementById('set_qrcode').value = map.qrcode_url || '';
     document.getElementById('set_webhook').value = map.webhook_url || '';
+    if (map.qrcode_url) {
+      document.getElementById('qrPreview').innerHTML = `<img src="${map.qrcode_url}" style="max-width:160px;border-radius:8px;border:1px solid var(--border)" />`;
+    }
     renderCommunities(JSON.parse(map.communities || '[]'));
   } catch(e) {}
 }
@@ -991,6 +1008,7 @@ async function removeCommunity(idx) {
 async function saveSettings() {
   try {
     await API.saveSettings({
+      site_title: document.getElementById('set_site_title').value,
       phone: document.getElementById('set_phone').value,
       wechat: document.getElementById('set_wechat').value,
       qrcode_url: document.getElementById('set_qrcode').value,
@@ -1000,6 +1018,22 @@ async function saveSettings() {
   } catch(e) {
     toast('保存失败: ' + e.message);
   }
+}
+
+async function uploadQRCode(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await API.post('/api/admin/upload', fd);
+    document.getElementById('set_qrcode').value = res.url;
+    document.getElementById('qrPreview').innerHTML = `<img src="${res.url}" style="max-width:160px;border-radius:8px;border:1px solid var(--border)" />`;
+    toast('二维码已上传');
+  } catch(e) {
+    toast('上传失败');
+  }
+  input.value = '';
 }
 
 // Init

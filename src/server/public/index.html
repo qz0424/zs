@@ -9,7 +9,7 @@
 <body>
 <div class="landing">
   <div class="landing-box">
-    <h1>窗帘款式展示</h1>
+    <h1 id="landingTitle">窗帘款式展示</h1>
     <p class="subtitle">浏览款式 · 对比选择 · 管理产品</p>
     <a href="/client/" class="landing-btn primary">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -17,5 +17,10 @@
     </a>
   </div>
 </div>
+<script>
+fetch('/api/settings').then(r=>r.json()).then(s=>{
+  if(s.site_title){document.title=s.site_title;document.getElementById('landingTitle').textContent=s.site_title;}
+}).catch(()=>{});
+</script>
 </body>
 </html>

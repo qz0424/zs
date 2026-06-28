@@ -53,6 +53,12 @@
       </div>
       <p>暂无产品</p>
     </div>
+    <div id="homeContact" style="display:none;margin:20px 16px;padding:20px;background:var(--card);border-radius:12px;border:1px solid var(--border);text-align:center">
+      <div style="font-weight:600;font-size:16px;margin-bottom:12px" id="contactTitle"></div>
+      <div id="contactQR" style="margin-bottom:12px"></div>
+      <div id="contactPhone" style="font-size:14px;color:#6b7280;margin-bottom:4px"></div>
+      <div id="contactWechat" style="font-size:13px;color:#9ca3af"></div>
+    </div>
   </div>
 
   <!-- Page: Detail -->
@@ -191,6 +197,7 @@
 <script src="/js/api.js"></script>
 <script>
 let allCurtains = [];
+let siteTitle = '产品展示';
 let categories = {};
 let compareIds = JSON.parse(localStorage.getItem('compareIds') || '[]');
 let favIds = new Set();
@@ -727,7 +734,7 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   document.getElementById('page-' + name).classList.remove('hidden');
   document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.remove('active'));
-  const titles = { home: '产品展示', favorites: '收藏', compare: '对比', order: '在线下单', myorders: '我的订单' };
+  const titles = { home: siteTitle, favorites: '收藏', compare: '对比', order: '在线下单', myorders: '我的订单' };
   document.getElementById('pageTitle').textContent = titles[name] || '产品展示';
   document.getElementById('backBtn').style.display = name === 'detail' ? 'inline' : 'none';
   document.getElementById('searchBar').style.display = name === 'home' ? 'flex' : 'none';
@@ -765,6 +772,37 @@ loadCurtains();
 loadFavorites();
 loadCollectionsForFilter();
 updateCompareBar();
+loadSiteSettings();
+
+async function loadSiteSettings() {
+  try {
+    const settings = await API.get('/api/settings');
+    if (settings.site_title) {
+      siteTitle = settings.site_title;
+      document.title = settings.site_title;
+      document.getElementById('pageTitle').textContent = settings.site_title;
+    }
+    const contact = document.getElementById('homeContact');
+    let hasContent = false;
+    if (settings.site_title) {
+      document.getElementById('contactTitle').textContent = settings.site_title;
+      hasContent = true;
+    }
+    if (settings.qrcode_url) {
+      document.getElementById('contactQR').innerHTML = `<img src="${settings.qrcode_url}" style="max-width:200px;border-radius:8px" onerror="this.style.display='none'" />`;
+      hasContent = true;
+    }
+    if (settings.phone) {
+      document.getElementById('contactPhone').innerHTML = '📞 ' + settings.phone;
+      hasContent = true;
+    }
+    if (settings.wechat) {
+      document.getElementById('contactWechat').textContent = '微信号: ' + settings.wechat;
+      hasContent = true;
+    }
+    if (hasContent) contact.style.display = 'block';
+  } catch(e) {}
+}
 </script>
 </body>
 </html>
