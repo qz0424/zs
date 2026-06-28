@@ -41,6 +41,25 @@ router.post('/', async (req, res) => {
   res.json(result);
 });
 
+router.get('/lookup', async (req, res) => {
+  const phone = (req.query.phone || '').trim();
+  if (!phone || phone.length < 3) return res.status(400).json({ error: '请输入手机号' });
+
+  const orders = await db.prepare(
+    "SELECT id, order_no, status, community, building, unit, room, customer_phone, created_at FROM orders WHERE customer_phone LIKE ? ORDER BY created_at DESC LIMIT 20"
+  ).all('%' + phone + '%');
+
+  for (const o of orders) {
+    o.items = await db.prepare('SELECT space, curtain_id, color_id, width, height FROM order_items WHERE order_id = ? ORDER BY sort_order').all(o.id);
+    for (const item of o.items) {
+      item.curtain = await db.prepare('SELECT name FROM curtains WHERE id = ?').get(item.curtain_id);
+      item.color = await db.prepare('SELECT color_name, color_code FROM curtain_colors WHERE id = ?').get(item.color_id);
+    }
+  }
+
+  res.json({ orders });
+});
+
 router.get('/', auth, async (req, res) => {
   let { status, community, search, page, limit } = req.query;
   page = parseInt(page) || 1;

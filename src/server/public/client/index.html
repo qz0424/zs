@@ -140,6 +140,23 @@
     </div>
   </div>
 
+  <!-- Page: My Orders -->
+  <div class="page hidden" id="page-myorders">
+    <div style="padding:16px">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="myordersPhone" type="tel" placeholder="输入下单手机号查询" maxlength="11" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);outline:none" />
+        <button class="btn btn-primary" onclick="lookupMyOrders()">查询</button>
+      </div>
+      <div id="myordersList"></div>
+      <div class="empty-state" id="myordersEmpty" style="display:none">
+        <div class="icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <p>输入手机号查询订单</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Compare Bar -->
   <div class="compare-bar" id="compareBar" style="display:none">
     <span id="compareCount">0 款</span>
@@ -163,6 +180,10 @@
     <a href="#" onclick="return showPage('order')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       <span>下单</span>
+    </a>
+    <a href="#" onclick="return showPage('myorders')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+      <span>订单</span>
     </a>
   </nav>
 </div>
@@ -593,6 +614,58 @@ async function toggleFav(id, add) {
   } catch(e) { toast('操作失败'); }
 }
 
+const orderStatusMap = {
+  pending: { text: '待确认', color: '#f59e0b', bg: '#fef3c7' },
+  confirmed: { text: '已确认', color: '#3b82f6', bg: '#dbeafe' },
+  in_progress: { text: '制作中', color: '#8b5cf6', bg: '#ede9fe' },
+  shipped: { text: '已发货', color: '#06b6d4', bg: '#cffafe' },
+  installed: { text: '已安装', color: '#10b981', bg: '#d1fae5' },
+  completed: { text: '已完成', color: '#059669', bg: '#d1fae5' },
+  cancelled: { text: '已取消', color: '#6b7280', bg: '#f3f4f6' }
+};
+
+async function lookupMyOrders() {
+  const phone = document.getElementById('myordersPhone').value.trim();
+  if (!phone) { toast('请输入手机号'); return; }
+  const list = document.getElementById('myordersList');
+  const empty = document.getElementById('myordersEmpty');
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:#999">查询中...</div>';
+  empty.style.display = 'none';
+  try {
+    const { orders } = await API.lookupOrders(phone);
+    if (!orders.length) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      empty.querySelector('p').textContent = '未找到相关订单';
+      return;
+    }
+    empty.style.display = 'none';
+    list.innerHTML = orders.map(o => {
+      const st = orderStatusMap[o.status] || { text: o.status, color: '#6b7280', bg: '#f3f4f6' };
+      const items = (o.items || []).map(it => {
+        const curtain = it.curtain ? it.curtain.name : '未知款式';
+        const color = it.color ? it.color.color_name : '';
+        const colorDot = it.color && it.color.color_code ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${it.color.color_code};border:1px solid rgba(0,0,0,.1);vertical-align:middle;margin-right:4px"></span>` : '';
+        const size = it.width && it.height ? `${it.width}×${it.height}cm` : '';
+        return `<div style="font-size:13px;color:#374151;margin-top:4px">${colorDot}${curtain}${color ? ' · ' + color : ''}${size ? ' · ' + size : ''}</div>`;
+      }).join('');
+      return `<div style="background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:600;font-size:14px">#${o.order_no || o.id}</div>
+          <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;color:${st.color};background:${st.bg}">${st.text}</span>
+        </div>
+        <div style="font-size:12px;color:#6b7280;margin-top:6px">📍 ${o.community || ''}${o.building ? o.building + '号楼' : ''}${o.unit ? o.unit + '单元' : ''}${o.room || ''}</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">📞 ${o.customer_phone || ''}</div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">${items}</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:8px">提交时间：${new Date(o.created_at).toLocaleString('zh-CN')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:#ef4444">查询失败，请重试</div>';
+    empty.style.display = 'none';
+  }
+}
+
 function toggleCompare(id) {
   const idx = compareIds.indexOf(id);
   if (idx > -1) {
@@ -654,12 +727,15 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   document.getElementById('page-' + name).classList.remove('hidden');
   document.querySelectorAll('.bottom-nav a').forEach(a => a.classList.remove('active'));
-  const titles = { home: '产品展示', favorites: '收藏', compare: '对比', order: '在线下单' };
+  const titles = { home: '产品展示', favorites: '收藏', compare: '对比', order: '在线下单', myorders: '我的订单' };
   document.getElementById('pageTitle').textContent = titles[name] || '产品展示';
   document.getElementById('backBtn').style.display = name === 'detail' ? 'inline' : 'none';
   document.getElementById('searchBar').style.display = name === 'home' ? 'flex' : 'none';
   document.getElementById('filterBar').style.display = name === 'home' ? 'flex' : 'none';
   document.querySelector('.compare-bar').style.display = name === 'home' && compareIds.length > 0 ? 'flex' : 'none';
+  const pageNames = ['home', 'favorites', 'compare', 'order', 'myorders'];
+  const idx = pageNames.indexOf(name);
+  if (idx > -1) document.querySelectorAll('.bottom-nav a')[idx].classList.add('active');
 
   if (name === 'home') loadCurtains();
   if (name === 'favorites') loadFavorites();

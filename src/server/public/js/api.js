@@ -105,6 +105,10 @@ const API = {
 
   submitOrder(data) { return this.post('/api/orders', data); },
 
+  lookupOrders(phone) {
+    return this.get('/api/orders/lookup?phone=' + encodeURIComponent(phone));
+  },
+
   getOrders(params) {
     const q = new URLSearchParams(params || {}).toString();
     return this.get('/api/orders' + (q ? '?' + q : ''));
