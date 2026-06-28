@@ -452,9 +452,9 @@ function renderGrid(grid, empty, items) {
       <div class="info">
         <div class="name" onclick="openDetail(${c.id})">${c.name}</div>
         <div class="meta">${c.size_range || ''}</div>
-        ${c.tier ? `<div class="price">¥${c.tier.unit_price}<span class="price-unit">/米</span></div>` : ''}
         <div class="colors">${cardColors.map(col => `<span class="color-dot" data-cid="${c.id}" data-url="${col.media_url || c.cover || '/assets/placeholder.svg'}" data-name="${col.color_name}" data-code="${col.color_code || '#ddd'}" style="background:${col.color_code || '#ddd'}" onclick="event.stopPropagation(); previewColor(this, ${c.id})"></span>`).join('')}</div>
-        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); toggleCompare(${c.id})" style="margin-top:6px;width:100%">
+        ${c.tier ? `<div class="price">¥${c.tier.unit_price}<span class="price-unit">/米</span></div>` : '<div class="price" style="color:var(--text-light);font-size:14px">价格面议</div>'}
+        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); toggleCompare(${c.id})" style="margin-top:8px;width:100%">
           ${hasCompare ? '取消对比' : '加入对比'}
         </button>
       </div>
