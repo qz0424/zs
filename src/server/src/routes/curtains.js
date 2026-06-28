@@ -25,7 +25,7 @@ router.get('/', (req, res) => {
   let { search, category, material, style, space, light, status } = req.query;
   if (!status) status = 'active';
 
-  let sql = 'SELECT id, name, size_range, status, created_at FROM curtains WHERE 1=1';
+  let sql = 'SELECT id, name, size_range, status, created_at FROM curtains WHERE deleted_at IS NULL';
   const params = [];
 
   if (!req.headers.authorization) {
@@ -143,8 +143,24 @@ router.put('/:id/status', auth, (req, res) => {
 });
 
 router.delete('/:id', auth, (req, res) => {
-  db.prepare('DELETE FROM curtains WHERE id = ?').run(req.params.id);
+  db.prepare("UPDATE curtains SET deleted_at=datetime('now'), status='inactive', updated_at=datetime('now') WHERE id=?").run(req.params.id);
   res.json({ ok: true });
+});
+
+router.get('/recycle/list', auth, (req, res) => {
+  const list = db.prepare("SELECT id, name, size_range, status, deleted_at, created_at FROM curtains WHERE deleted_at IS NOT NULL OR status='inactive' ORDER BY COALESCE(deleted_at, updated_at) DESC").all();
+  const result = list.map(c => {
+    const cover = db.prepare("SELECT url FROM curtain_media WHERE curtain_id = ? AND type = 'image' ORDER BY sort_order LIMIT 1").get(c.id);
+    return { ...c, cover: cover?.url || null };
+  });
+  res.json(result);
+});
+
+router.put('/:id/restore', auth, (req, res) => {
+  const curtain = db.prepare('SELECT id FROM curtains WHERE id = ?').get(req.params.id);
+  if (!curtain) return res.status(404).json({ error: '款式不存在' });
+  db.prepare("UPDATE curtains SET deleted_at=NULL, status='active', updated_at=datetime('now') WHERE id=?").run(req.params.id);
+  res.json(getCurtain(req.params.id));
 });
 
 module.exports = router;

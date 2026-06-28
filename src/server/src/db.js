@@ -27,6 +27,7 @@ db.exec(`
     size_range TEXT,
     description TEXT,
     status TEXT DEFAULT 'active',
+    deleted_at TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -124,5 +125,6 @@ db.exec(`
 `);
 
 try { db.exec("ALTER TABLE favorites ADD COLUMN collection_id INTEGER REFERENCES collections(id) ON DELETE SET NULL"); } catch(e) {}
+try { db.exec("ALTER TABLE curtains ADD COLUMN deleted_at TEXT"); } catch(e) {}
 
 module.exports = db;

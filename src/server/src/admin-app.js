@@ -24,7 +24,12 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 const adminPages = express.static(path.join(__dirname, '..', 'public', 'admin'));
 app.use('/admin', (req, res, next) => {
-  if (req.path === '/login.html' || req.path === '/register.html') return adminPages(req, res, next);
+  if (req.path === '/login.html' || req.path === '/register.html') {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    return adminPages(req, res, next);
+  }
   const token = req.query.token || '';
   try {
     jwt.verify(token, process.env.JWT_SECRET);

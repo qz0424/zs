@@ -77,6 +77,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         批量导入
       </a>
+      <a href="#" onclick="return switchTab('recycle')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        回收站
+      </a>
       <a href="#" onclick="return switchTab('history')">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         操作记录
@@ -170,6 +174,7 @@ function switchTab(name) {
   if (name === 'products') renderProductsTab();
   else if (name === 'categories') renderCategoriesTab();
   else if (name === 'import') renderImportTab();
+  else if (name === 'recycle') renderRecycleTab();
   else if (name === 'history') renderHistoryTab();
   else if (name === 'orders') renderOrdersTab();
   else if (name === 'settings') renderSettingsTab();
@@ -361,7 +366,7 @@ async function toggleStatus(id, status) {
 }
 
 async function deleteProduct(id) {
-  if (!confirm('确定删除？删除后可在操作记录中恢复')) return;
+  if (!confirm('确定放入回收站？可随时恢复')) return;
   try {
     const c = await API.getCurtain(id);
     addHistory({ type: 'delete', curtain_id: id, name: c.name, data: c, time: new Date().toLocaleString() });
@@ -372,6 +377,53 @@ async function deleteProduct(id) {
 }
 
 // ====== History ======
+// ====== Recycle Bin Tab ======
+async function renderRecycleTab() {
+  const main = document.getElementById('adminMain');
+  main.innerHTML = `<h2>回收站</h2>
+    <p style="color:var(--text-secondary);margin-bottom:16px">下架和删除的款式可在此恢复</p>
+    <div id="recycleList"><p style="color:var(--text-secondary)">加载中...</p></div>`;
+  try {
+    const items = await API.get('/api/curtains/recycle/list');
+    const el = document.getElementById('recycleList');
+    if (items.length === 0) {
+      el.innerHTML = '<p style="color:var(--text-secondary)">回收站为空</p>';
+      return;
+    }
+    el.innerHTML = `<table class="admin-table"><thead><tr><th>款式</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+      <tbody>${items.map(c => {
+        const isDeleted = c.deleted_at;
+        const label = isDeleted ? '已删除' : '已下架';
+        const color = isDeleted ? '#C62828' : '#E65100';
+        const bg = isDeleted ? '#FFEBEE' : '#FFF3E0';
+        const time = isDeleted ? c.deleted_at : '';
+        return `<tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              ${c.cover ? `<img src="${c.cover}" style="width:40px;height:40px;border-radius:6px;object-fit:cover" />` : ''}
+              <span style="font-weight:500">${c.name}</span>
+            </div>
+          </td>
+          <td><span style="background:${bg};color:${color};padding:3px 10px;border-radius:10px;font-size:12px;font-weight:600">${label}</span></td>
+          <td style="color:var(--text-secondary);font-size:12px">${time}</td>
+          <td><button class="btn btn-sm btn-primary" onclick="restoreCurtain(${c.id})">恢复上架</button></td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
+  } catch(e) {
+    document.getElementById('recycleList').innerHTML = '<p style="color:#C62828">加载失败: ' + e.message + '</p>';
+  }
+}
+
+async function restoreCurtain(id) {
+  try {
+    await API.put('/api/curtains/' + id + '/restore');
+    toast('已恢复上架');
+    renderRecycleTab();
+  } catch(e) {
+    toast('恢复失败: ' + e.message);
+  }
+}
+
 function getHistory() { return JSON.parse(localStorage.getItem('adminHistory') || '[]'); }
 function addHistory(record) {
   const h = getHistory();
@@ -518,14 +570,11 @@ function toast(msg) {
 
 // ====== Orders Tab ======
 const orderStatusMap = {
-  pending: { label: '待确认', color: '#E65100', bg: '#FFF3E0' },
+  new: { label: '新订单', color: '#E65100', bg: '#FFF3E0' },
   confirmed: { label: '已确认', color: '#1565C0', bg: '#E3F2FD' },
-  measuring: { label: '待量尺', color: '#6A1B9A', bg: '#F3E5F5' },
-  quoted: { label: '已报价', color: '#00695C', bg: '#E0F2F1' },
-  manufacturing: { label: '制作中', color: '#E65100', bg: '#FFF3E0' },
-  installing: { label: '待安装', color: '#283593', bg: '#E8EAF6' },
+  producing: { label: '制作中', color: '#6A1B9A', bg: '#F3E5F5' },
   completed: { label: '已完成', color: '#2E7D32', bg: '#E8F5E9' },
-  cancelled: { label: '已取消', color: '#C62828', bg: '#FFEBEE' }
+  delivered: { label: '已交付', color: '#00695C', bg: '#E0F2F1' }
 };
 
 let orderFilter = 'all';
@@ -566,7 +615,7 @@ async function loadOrders() {
       return `<tr>
         <td style="font-weight:500">${o.order_no}</td>
         <td>${o.community || ''} ${o.building || ''}栋${o.unit || ''}单元${o.room || ''}</td>
-        <td>${o.phone || ''}</td>
+        <td>${o.customer_phone || ''}</td>
         <td>${o.item_count || 0}</td>
         <td><span style="background:${s.bg};color:${s.color};padding:3px 10px;border-radius:10px;font-size:12px;font-weight:600">${s.label}</span></td>
         <td style="color:var(--text-secondary);font-size:12px">${o.created_at || ''}</td>
@@ -584,7 +633,7 @@ async function loadOrders() {
 function filterOrders() { loadOrders(); }
 
 function cycleOrderStatus(id, current) {
-  const flow = ['pending','confirmed','measuring','quoted','manufacturing','installing','completed'];
+  const flow = ['new','confirmed','producing','completed','delivered'];
   const idx = flow.indexOf(current);
   const next = idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
   if (!next) { toast('当前状态无法推进'); return; }
@@ -609,19 +658,21 @@ async function viewOrder(id) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px">
           <div><span style="color:var(--text-secondary)">小区:</span> ${o.community || '-'}</div>
           <div><span style="color:var(--text-secondary)">地址:</span> ${o.building || ''}栋${o.unit || ''}单元${o.room || ''}</div>
-          <div><span style="color:var(--text-secondary)">电话:</span> ${o.phone || '-'}</div>
+          <div><span style="color:var(--text-secondary)">电话:</span> ${o.customer_phone || '-'}</div>
           <div><span style="color:var(--text-secondary)">下单时间:</span> ${o.created_at || '-'}</div>
-          ${o.address_note ? `<div style="grid-column:1/-1"><span style="color:var(--text-secondary)">补充:</span> ${o.address_note}</div>` : ''}
+          ${o.address_detail ? `<div style="grid-column:1/-1"><span style="color:var(--text-secondary)">补充:</span> ${o.address_detail}</div>` : ''}
           ${o.note ? `<div style="grid-column:1/-1"><span style="color:var(--text-secondary)">备注:</span> ${o.note}</div>` : ''}
         </div>
       </div>
       <div class="admin-card">
         <h3>窗帘明细</h3>
-        <table class="admin-table"><thead><tr><th>款式</th><th>颜色</th><th>尺寸</th></tr></thead>
+        <table class="admin-table"><thead><tr><th>房间</th><th>款式</th><th>品类</th><th>颜色</th><th>尺寸</th></tr></thead>
         <tbody>${(o.items || []).map(item => `<tr>
-          <td>${item.curtain_name || '-'}</td>
-          <td>${item.color_name || '-'}</td>
-          <td>${item.width_cm ? item.width_cm + 'cm' : '-'} × ${item.height_cm ? item.height_cm + 'cm' : '-'}</td>
+          <td>${item.space || '-'}</td>
+          <td>${item.curtain?.name || '-'}</td>
+          <td>${item.curtain?.category_name || '-'}</td>
+          <td>${item.color?.color_name || '-'}</td>
+          <td>${item.width ? item.width + 'cm' : '-'} × ${item.height ? item.height + 'cm' : '-'}</td>
         </tr>`).join('')}</tbody></table>
       </div>
       <div class="admin-card">

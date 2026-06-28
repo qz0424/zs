@@ -66,10 +66,13 @@ router.get('/', auth, (req, res) => {
   params.push(limit, offset);
 
   const orders = db.prepare(sql).all(...params);
+  const itemCountStmt = db.prepare('SELECT COUNT(*) as cnt FROM order_items WHERE order_id = ?');
+  const itemsStmt = db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY sort_order');
   orders.forEach(o => {
-    o.items = db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY sort_order').all(o.id);
+    o.item_count = itemCountStmt.get(o.id).cnt;
+    o.items = itemsStmt.all(o.id);
     o.items.forEach(item => {
-      item.curtain = db.prepare('SELECT id, name FROM curtains WHERE id = ?').get(item.curtain_id);
+      item.curtain = db.prepare(`SELECT c.id, c.name, co.name as category_name FROM curtains c LEFT JOIN category_options co ON co.id = c.category_id WHERE c.id = ?`).get(item.curtain_id);
       item.color = db.prepare('SELECT id, color_name, color_code FROM curtain_colors WHERE id = ?').get(item.color_id);
     });
   });
@@ -82,7 +85,7 @@ router.get('/:id', (req, res) => {
   if (!order) return res.status(404).json({ error: '订单不存在' });
   order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY sort_order').all(order.id);
   order.items.forEach(item => {
-    item.curtain = db.prepare('SELECT id, name, size_range FROM curtains WHERE id = ?').get(item.curtain_id);
+    item.curtain = db.prepare(`SELECT c.id, c.name, c.size_range, co.name as category_name FROM curtains c LEFT JOIN category_options co ON co.id = c.category_id WHERE c.id = ?`).get(item.curtain_id);
     item.color = db.prepare('SELECT id, color_name, color_code FROM curtain_colors WHERE id = ?').get(item.color_id);
     if (item.curtain) {
       item.curtain.cover = db.prepare("SELECT url FROM curtain_media WHERE curtain_id = ? AND type = 'image' ORDER BY sort_order LIMIT 1").get(item.curtain_id)?.url || null;

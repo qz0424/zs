@@ -286,7 +286,7 @@ function onOrderCurtainChange(id) {
     }
     container.innerHTML = c.colors.map((col, i) => {
       const colorVal = col.color_code || '#ccc';
-      return `<div class="color-option${i === 0 ? ' active' : ''}" onclick="selectColor(${id}, ${i}, ${col.id})" data-index="${i}" data-color-id="${col.id}">
+      return `<div class="color-option${i === 0 ? ' active' : ''}" onclick="orderSelectColor(${id}, ${i}, ${col.id})" data-index="${i}" data-color-id="${col.id}">
         <span class="color-dot" style="background:${colorVal}"></span>
         <span class="color-name">${col.color_name || '颜色' + (i+1)}</span>
       </div>`;
@@ -294,7 +294,7 @@ function onOrderCurtainChange(id) {
   });
 }
 
-function selectColor(itemId, colorIndex, colorId) {
+function orderSelectColor(itemId, colorIndex, colorId) {
   const container = document.getElementById('oi-colors-' + itemId);
   container.querySelectorAll('.color-option').forEach(b => b.classList.remove('active'));
   container.querySelector(`[data-index="${colorIndex}"]`).classList.add('active');
