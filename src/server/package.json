@@ -1,12 +1,13 @@
 {
-  "name": "server",
+  "name": "curtain-showcase-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "窗帘款式展示系统后端",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:admin": "node src/admin-server.js",
+    "start:deploy": "node src/deploy.js",
     "dev": "node --watch src/server.js",
-    "admin": "node src/admin-server.js",
     "both": "node src/server.js & node src/admin-server.js"
   },
   "keywords": [],
@@ -21,6 +22,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
+    "pg": "^8.13.0",
     "uuid": "^14.0.1"
   }
 }

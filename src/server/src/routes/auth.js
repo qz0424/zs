@@ -6,25 +6,25 @@ const db = require('../db');
 const JWT_SECRET = process.env.JWT_SECRET || 'curtain-showcase-default-secret-2026';
 const router = Router();
 
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '请输入用户名和密码' });
   if (username.length < 2) return res.status(400).json({ error: '用户名至少2个字符' });
   if (password.length < 6) return res.status(400).json({ error: '密码至少6个字符' });
 
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  const existing = await db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) return res.status(409).json({ error: '用户名已存在' });
 
   const hash = bcrypt.hashSync(password, 10);
-  db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run(username, hash, 'admin');
+  await db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run(username, hash, 'admin');
   res.json({ message: '注册成功' });
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '请输入用户名和密码' });
 
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  const user = await db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user) return res.status(401).json({ error: '用户不存在' });
 
   const ok = bcrypt.compareSync(password, user.password);

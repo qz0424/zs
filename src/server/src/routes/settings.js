@@ -6,8 +6,8 @@ const router = Router();
 
 const PUBLIC_KEYS = ['phone', 'wechat', 'wechat_qr', 'business_name', 'slogan'];
 
-router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT key, value FROM settings').all();
+router.get('/', async (req, res) => {
+  const rows = await db.prepare('SELECT key, value FROM settings').all();
   const settings = {};
   rows.forEach(r => { settings[r.key] = r.value; });
   if (!req.headers.authorization) {
@@ -18,15 +18,15 @@ router.get('/', (req, res) => {
   res.json(settings);
 });
 
-router.put('/', auth, (req, res) => {
-  const stmt = db.prepare(`INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`);
-  const update = db.transaction(() => {
+router.put('/', auth, async (req, res) => {
+  const update = db.transaction(async (txnDb) => {
+    const stmt = txnDb.prepare(`INSERT INTO settings (key, value, updated_at) VALUES (?, ?, NOW())
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = NOW()`);
     for (const [key, value] of Object.entries(req.body)) {
-      if (key && typeof key === 'string') stmt.run(key, value || null);
+      if (key && typeof key === 'string') await stmt.run(key, value || null);
     }
   });
-  update();
+  await update();
   res.json({ ok: true });
 });
 

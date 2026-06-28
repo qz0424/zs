@@ -34,45 +34,49 @@ router.post('/upload', auth, upload.single('file'), (req, res) => {
   res.json({ url, filename: req.file.filename, type: req.file.mimetype.startsWith('video/') ? 'video' : 'image' });
 });
 
-router.post('/curtains', auth, (req, res) => {
+router.post('/curtains', auth, async (req, res) => {
   const db = require('../db');
-  const { name, category_id, material_id, style_id, light_level_id, space_id, size_range, description, price, colors, media } = req.body;
+  const { name, category_id, material_id, style_id, light_level_id, space_id, size_range, description, colors, media } = req.body;
   if (!name) return res.status(400).json({ error: '款式名称不能为空' });
 
-  const info = db.prepare(`INSERT INTO curtains (name, category_id, material_id, style_id, light_level_id, space_id, size_range, description)
+  const info = await db.prepare(`INSERT INTO curtains (name, category_id, material_id, style_id, light_level_id, space_id, size_range, description)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(name, category_id || null, material_id || null, style_id || null, light_level_id || null, space_id || null, size_range || null, description || null);
 
   const curtainId = info.lastInsertRowid;
 
   if (colors) {
-    const stmt = db.prepare('INSERT INTO curtain_colors (curtain_id, color_name, color_code, sort_order) VALUES (?, ?, ?, ?)');
-    colors.forEach((c, i) => stmt.run(curtainId, c.color_name, c.color_code || null, i));
+    for (let i = 0; i < colors.length; i++) {
+      const c = colors[i];
+      await db.prepare('INSERT INTO curtain_colors (curtain_id, color_name, color_code, sort_order) VALUES (?, ?, ?, ?)').run(curtainId, c.color_name, c.color_code || null, i);
+    }
   }
 
   if (media) {
-    const stmt = db.prepare('INSERT INTO curtain_media (curtain_id, color_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)');
-    media.forEach((m, i) => stmt.run(curtainId, m.color_id || null, m.type, m.url, i));
+    for (let i = 0; i < media.length; i++) {
+      const m = media[i];
+      await db.prepare('INSERT INTO curtain_media (curtain_id, color_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)').run(curtainId, m.color_id || null, m.type, m.url, i);
+    }
   }
 
-  res.json({ id: curtainId, ok: true });
+  res.json({ id: Number(curtainId), ok: true });
 });
 
-router.post('/import', auth, (req, res) => {
+router.post('/import', auth, async (req, res) => {
   const db = require('../db');
   const { items } = req.body;
   if (!items || !items.length) return res.status(400).json({ error: '没有数据' });
 
-  const stmt = db.prepare(`INSERT INTO curtains (name, category_id, material_id, style_id, light_level_id, space_id, size_range, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`);
-  const insertMany = db.transaction((items) => {
+  const insertMany = db.transaction(async (txnDb) => {
     const ids = [];
+    const stmt = txnDb.prepare(`INSERT INTO curtains (name, category_id, material_id, style_id, light_level_id, space_id, size_range, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`);
     for (const item of items) {
-      const info = stmt.run(item.name, item.category_id || null, item.material_id || null, item.style_id || null, item.light_level_id || null, item.space_id || null, item.size_range || null, item.description || null);
+      const info = await stmt.run(item.name, item.category_id || null, item.material_id || null, item.style_id || null, item.light_level_id || null, item.space_id || null, item.size_range || null, item.description || null);
       ids.push(info.lastInsertRowid);
     }
     return ids;
   });
 
-  const ids = insertMany(items);
+  const ids = await insertMany();
   res.json({ count: ids.length, ids });
 });
 
