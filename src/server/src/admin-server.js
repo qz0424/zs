@@ -13,6 +13,7 @@ if (!existing) {
   console.log('默认管理员已创建: admin / admin123');
 }
 
-app.listen(PORT, () => {
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
   console.log(`管理端已启动: http://localhost:${PORT}`);
 });
