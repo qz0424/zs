@@ -285,24 +285,24 @@ function onOrderCurtainChange(id) {
       return;
     }
     container.innerHTML = c.colors.map((col, i) => {
-      const colorVal = col.color || '#ccc';
-      return `<div class="color-option${i === 0 ? ' active' : ''}" onclick="selectColor(${id}, ${i})" data-index="${i}">
+      const colorVal = col.color_code || '#ccc';
+      return `<div class="color-option${i === 0 ? ' active' : ''}" onclick="selectColor(${id}, ${i}, ${col.id})" data-index="${i}" data-color-id="${col.id}">
         <span class="color-dot" style="background:${colorVal}"></span>
-        <span class="color-name">${col.name || '颜色' + (i+1)}</span>
+        <span class="color-name">${col.color_name || '颜色' + (i+1)}</span>
       </div>`;
     }).join('');
   });
 }
 
-function selectColor(itemId, colorIndex) {
+function selectColor(itemId, colorIndex, colorId) {
   const container = document.getElementById('oi-colors-' + itemId);
   container.querySelectorAll('.color-option').forEach(b => b.classList.remove('active'));
   container.querySelector(`[data-index="${colorIndex}"]`).classList.add('active');
 }
 
-function getColorIndex(itemId) {
+function getColorId(itemId) {
   const active = document.querySelector('#oi-colors-' + itemId + ' .color-option.active');
-  return active ? +active.dataset.index : null;
+  return active ? +active.dataset.colorId : null;
 }
 
 function buildOrderPayload() {
@@ -315,20 +315,20 @@ function buildOrderPayload() {
     const activeRoom = roomGrid.querySelector('.room-type-btn.active');
     const roomType = activeRoom ? roomTypes[+activeRoom.dataset.index] : '';
     items.push({
-      room_type: roomType,
+      space: roomType,
       curtain_id: curtainId,
-      color_index: getColorIndex(id),
-      width_cm: +document.getElementById('oi-w-' + id).value || null,
-      height_cm: +document.getElementById('oi-h-' + id).value || null
+      color_id: getColorId(id),
+      width: +document.getElementById('oi-w-' + id).value || null,
+      height: +document.getElementById('oi-h-' + id).value || null
     });
   });
   return {
+    customer_phone: document.getElementById('orderPhone').value,
     community: document.getElementById('orderCommunity').value,
     building: document.getElementById('orderBuilding').value,
     unit: document.getElementById('orderUnit').value,
     room: document.getElementById('orderRoom').value,
-    address_note: document.getElementById('orderAddressNote').value,
-    phone: document.getElementById('orderPhone').value,
+    address_detail: document.getElementById('orderAddressNote').value,
     items,
     note: document.getElementById('orderNote').value
   };
@@ -336,9 +336,9 @@ function buildOrderPayload() {
 
 async function submitOrder() {
   const data = buildOrderPayload();
-  if (!data.community) return alert('请选择小区');
-  if (!data.room) return alert('请输入房间号');
-  if (!data.phone || !/^1\d{10}$/.test(data.phone)) return alert('请输入正确的手机号');
+  if (!data.community) return alert('请填写小区名称');
+  if (!data.room) return alert('请填写房间号');
+  if (!data.customer_phone || !/^1\d{10}$/.test(data.customer_phone)) return alert('请输入正确的手机号');
   if (data.items.length === 0) return alert('请至少添加一组窗帘');
   try {
     const res = await API.submitOrder(data);
