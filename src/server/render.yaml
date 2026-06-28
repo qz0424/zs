@@ -9,13 +9,6 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: DATABASE_URL
-        fromDatabase:
-          name: curtain-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
-
-databases:
-  - name: curtain-db
-    databaseName: curtain_showcase
-    plan: free
