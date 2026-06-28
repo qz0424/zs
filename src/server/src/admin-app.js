@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'curtain-showcase-default-secret-2026';
 
 const authRoutes = require('./routes/auth');
 const curtainRoutes = require('./routes/curtains');
@@ -33,7 +34,7 @@ app.use('/admin', (req, res, next) => {
   }
   const token = req.query.token || '';
   try {
-    jwt.verify(token, process.env.JWT_SECRET);
+    jwt.verify(token, JWT_SECRET);
     return adminPages(req, res, next);
   } catch {
     return res.redirect('/admin/login.html');

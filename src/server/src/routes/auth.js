@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'curtain-showcase-default-secret-2026';
 const router = Router();
 
 router.post('/register', (req, res) => {
@@ -29,7 +30,7 @@ router.post('/login', (req, res) => {
   const ok = bcrypt.compareSync(password, user.password);
   if (!ok) return res.status(401).json({ error: '密码错误' });
 
-  const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, username: user.username, role: user.role });
 });
 
@@ -37,7 +38,7 @@ router.get('/me', (req, res) => {
   const header = req.headers.authorization;
   if (!header) return res.status(401).json({ error: '未登录' });
   try {
-    const user = jwt.verify(header.replace('Bearer ', ''), process.env.JWT_SECRET);
+    const user = jwt.verify(header.replace('Bearer ', ''), JWT_SECRET);
     res.json(user);
   } catch {
     res.status(401).json({ error: '登录已过期' });

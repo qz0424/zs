@@ -28,6 +28,7 @@
   const t = localStorage.getItem('token');
   if (t) {
     try {
+      if (typeof API === 'undefined') { localStorage.removeItem('token'); return; }
       await API.get('/api/settings');
       window.location.href = 'dashboard.html?token=' + t;
     } catch(e) {
