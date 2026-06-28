@@ -2,6 +2,7 @@ services:
   - type: web
     name: curtain-showcase
     env: node
+    rootDir: src/server
     buildCommand: npm install
     startCommand: node src/deploy.js
     envVars:
