@@ -116,5 +116,21 @@ const API = {
 
   getSettings() { return this.get('/api/settings'); },
 
-  saveSettings(data) { return this.put('/api/settings', data); }
+  saveSettings(data) { return this.put('/api/settings', data); },
+
+  getPriceTiers() { return this.get('/api/pricetiers'); },
+
+  getEnabledTiers() { return this.get('/api/pricetiers/enabled'); },
+
+  savePriceTier(data, id) {
+    return id ? this.put('/api/pricetiers/' + id, data) : this.post('/api/pricetiers', data);
+  },
+
+  deletePriceTier(id) { return this.del('/api/pricetiers/' + id); },
+
+  togglePriceTier(id) { return this.put('/api/pricetiers/' + id + '/toggle'); },
+
+  batchAssignTier(curtainIds, tierId) {
+    return this.put('/api/pricetiers/batch/tier', { curtain_ids: curtainIds, tier_id: tierId });
+  }
 };

@@ -11,6 +11,7 @@ const uploadRoutes = require('./routes/upload');
 const orderRoutes = require('./routes/orders');
 const settingsRoutes = require('./routes/settings');
 const notifyRoute = require('./routes/notify');
+const pricetierRoutes = require('./routes/pricetiers');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/admin', uploadRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notify', notifyRoute);
+app.use('/api/pricetiers', pricetierRoutes);
 app.get('/admin', (req, res) => res.redirect('/admin/login.html'));
 app.get('/client', (req, res) => res.redirect('/client/'));
 

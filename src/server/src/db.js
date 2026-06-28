@@ -122,9 +122,21 @@ db.exec(`
     value TEXT,
     updated_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS price_tiers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    unit_price REAL NOT NULL,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0,
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 try { db.exec("ALTER TABLE favorites ADD COLUMN collection_id INTEGER REFERENCES collections(id) ON DELETE SET NULL"); } catch(e) {}
 try { db.exec("ALTER TABLE curtains ADD COLUMN deleted_at TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE curtains ADD COLUMN tier_id INTEGER REFERENCES price_tiers(id) ON DELETE SET NULL"); } catch(e) {}
 
 module.exports = db;

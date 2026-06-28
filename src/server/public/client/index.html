@@ -7,6 +7,10 @@
 <link rel="stylesheet" href="/css/style.css">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2C3E50">
+<style>
+.price{font-size:18px;font-weight:700;color:var(--accent,#c4956a);margin:4px 0}.price-unit{font-size:12px;font-weight:400;color:var(--text-secondary);margin-left:2px}
+.detail-price-value{font-size:28px;font-weight:700;color:var(--accent,#c4956a)}.detail-price-unit{font-size:14px;color:var(--text-secondary);margin-left:4px}.detail-price-desc{display:block;font-size:13px;color:var(--text-secondary);margin-top:2px}
+</style>
 </head>
 <body>
 
@@ -30,6 +34,7 @@
     <div class="filter-group"><span class="filter-label">材质</span><select id="filterMaterial" onchange="filterByDim('material', this.value)"><option value="">不限</option></select></div>
     <div class="filter-group"><span class="filter-label">风格</span><select id="filterStyle" onchange="filterByDim('style', this.value)"><option value="">不限</option></select></div>
     <div class="filter-group"><span class="filter-label">空间</span><select id="filterSpace" onchange="filterByDim('space', this.value)"><option value="">不限</option></select></div>
+    <div class="filter-group"><span class="filter-label">价格</span><select id="filterTier" onchange="filterByTier(this.value)"><option value="">不限</option></select></div>
   </div>
 
   <!-- Page: Home -->
@@ -59,6 +64,7 @@
       </div>
       <div class="body">
         <h2 id="detailName"></h2>
+        <div id="detailPrice" style="margin-bottom:12px"></div>
         <div class="tags" id="detailTags"></div>
         <div class="colors-list" id="detailColors"></div>
         <div class="fav-large" id="detailFav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> <span id="detailFavText">收藏</span></div>
@@ -201,6 +207,11 @@ async function loadCategories() {
   try {
     categories = await API.getCategories();
     renderFilters();
+  } catch(e) {}
+  try {
+    const tiers = await API.getEnabledTiers();
+    const sel = document.getElementById('filterTier');
+    sel.innerHTML = '<option value="">不限</option>' + tiers.map(t => `<option value="${t.id}">${t.name} (¥${t.unit_price}/米)</option>`).join('');
   } catch(e) {}
 }
 
@@ -354,12 +365,19 @@ let activeFilters = {};
 function filterByDim(dim, val) {
   if (dim === 'all') {
     activeFilters = {};
-    ['filterCategory', 'filterMaterial', 'filterStyle', 'filterSpace'].forEach(id => document.getElementById(id).value = '');
+    ['filterCategory', 'filterMaterial', 'filterStyle', 'filterSpace', 'filterTier'].forEach(id => document.getElementById(id).value = '');
   } else {
     document.getElementById('filterAll').value = '';
     if (val) activeFilters[dim] = val;
     else delete activeFilters[dim];
   }
+  loadCurtains();
+}
+
+function filterByTier(val) {
+  document.getElementById('filterAll').value = '';
+  if (val) activeFilters['tier_id'] = val;
+  else delete activeFilters['tier_id'];
   loadCurtains();
 }
 
@@ -401,6 +419,7 @@ function renderGrid(grid, empty, items) {
       <div class="info">
         <div class="name" onclick="openDetail(${c.id})">${c.name}</div>
         <div class="meta">${c.size_range || ''}</div>
+        ${c.tier ? `<div class="price">¥${c.tier.unit_price}<span class="price-unit">/米</span></div>` : ''}
         <div class="colors">${cardColors.map(col => `<span class="color-dot" data-cid="${c.id}" data-url="${col.media_url || c.cover || '/assets/placeholder.svg'}" data-name="${col.color_name}" data-code="${col.color_code || '#ddd'}" style="background:${col.color_code || '#ddd'}" onclick="event.stopPropagation(); previewColor(this, ${c.id})"></span>`).join('')}</div>
         <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); toggleCompare(${c.id})" style="margin-top:6px;width:100%">
           ${hasCompare ? '取消对比' : '加入对比'}
@@ -483,6 +502,7 @@ async function openDetail(id) {
     }).join('');
 
     document.getElementById('detailName').textContent = c.name;
+    document.getElementById('detailPrice').innerHTML = c.tier ? `<span class="detail-price-value">¥${c.tier.unit_price}</span><span class="detail-price-unit">/米</span>${c.tier.description ? `<span class="detail-price-desc">${c.tier.description}</span>` : ''}` : '';
     const tags = [];
     if (c.category) tags.push(c.category.name);
     if (c.material) tags.push(c.material.name);
