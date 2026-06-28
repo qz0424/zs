@@ -937,9 +937,10 @@ async function renderSettingsTab() {
         </div>
         <label style="margin-top:12px">或输入图片URL</label><input id="set_qrcode" placeholder="二维码图片链接" />
       </div>
-      <h3 style="margin-top:20px">通知</h3>
+      <h3 style="margin-top:20px">微信通知</h3>
       <div class="admin-form">
-        <label>企业微信/钉钉 Webhook</label><input id="set_webhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx" />
+        <label>Server酱 SendKey</label><input id="set_sckey" placeholder="在 sct.ftqq.com 获取的 SendKey" />
+        <p style="font-size:12px;color:#6b7280;margin-top:-8px">新订单将自动推送到微信。获取方式：<a href="https://sct.ftqq.com/" target="_blank" style="color:var(--accent)">sct.ftqq.com</a></p>
       </div>
       <h3 style="margin-top:20px">小区列表</h3>
       <div id="communityList" style="margin-bottom:12px"></div>
@@ -963,7 +964,7 @@ async function loadSettings() {
     document.getElementById('set_phone').value = map.phone || '';
     document.getElementById('set_wechat').value = map.wechat || '';
     document.getElementById('set_qrcode').value = map.qrcode_url || '';
-    document.getElementById('set_webhook').value = map.webhook_url || '';
+    document.getElementById('set_sckey').value = map.sckey || '';
     if (map.qrcode_url) {
       document.getElementById('qrPreview').innerHTML = `<img src="${map.qrcode_url}" style="max-width:160px;border-radius:8px;border:1px solid var(--border)" />`;
     }
@@ -1012,7 +1013,7 @@ async function saveSettings() {
       phone: document.getElementById('set_phone').value,
       wechat: document.getElementById('set_wechat').value,
       qrcode_url: document.getElementById('set_qrcode').value,
-      webhook_url: document.getElementById('set_webhook').value
+      sckey: document.getElementById('set_sckey').value
     });
     toast('设置已保存');
   } catch(e) {
