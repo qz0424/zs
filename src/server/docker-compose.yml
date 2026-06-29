@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  curtain-app:
+    build: .
+    container_name: curtain-showcase
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://neondb_owner:npg_XGU2QhfcONJ1@ep-proud-frog-ad2pnk4b-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
+      - JWT_SECRET=curtain-showcase-default-secret-2026
+      - PORT=3000
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  uploads_data:
