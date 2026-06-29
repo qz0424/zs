@@ -1,0 +1,5 @@
+{
+  "app_dir": "src/server",
+  "build_command": "npm install",
+  "start_command": "node src/deploy.js"
+}
